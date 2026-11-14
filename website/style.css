@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap');
+
 :root {
     --primary-color: #0078d4;
     --secondary-color: #1b1a17;
@@ -13,7 +16,7 @@
 }
 
 body {
-    font-family: "Segoe UI", "Yu Gothic", "Meiryo", sans-serif;
+    font-family: "Noto Sans Mono", "Noto Sans JP", sans-serif;
     line-height: 1.6;
     color: var(--text-color);
     background-color: var(--bg-color);
