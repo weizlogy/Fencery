@@ -141,3 +141,49 @@ impl Default for ChildSettings {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_settings_validate_clamps_font_size_and_fills_empty_family() {
+        let mut app = AppSettings {
+            font_size: 100.0,
+            font_family: String::new(),
+        };
+        app.validate();
+        assert_eq!(app.font_size, 72.0);
+        assert_eq!(app.font_family, "Meiryo");
+
+        let mut app = AppSettings {
+            font_size: 1.0,
+            font_family: "Consolas".to_string(),
+        };
+        app.validate();
+        assert_eq!(app.font_size, 8.0);
+        assert_eq!(app.font_family, "Consolas");
+    }
+
+    #[test]
+    fn app_settings_roundtrip_toml() {
+        let settings = Settings {
+            app: AppSettings {
+                font_size: 14.5,
+                font_family: "Meiryo".to_string(),
+            },
+            children: HashMap::new(),
+        };
+        let toml = toml::to_string_pretty(&settings).unwrap();
+        let loaded: Settings = toml::from_str(&toml).unwrap();
+        assert_eq!(loaded.app.font_size, 14.5);
+        assert_eq!(loaded.app.font_family, "Meiryo");
+    }
+
+    #[test]
+    fn missing_app_fields_fall_back_to_defaults() {
+        let settings: Settings = toml::from_str("").unwrap();
+        assert_eq!(settings.app.font_size, 12.0);
+        assert_eq!(settings.app.font_family, "Meiryo");
+    }
+}

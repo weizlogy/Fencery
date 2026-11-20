@@ -248,7 +248,7 @@ unsafe fn handle_settings_msg(
             let mut ps = PAINTSTRUCT::default();
             BeginPaint(hwnd, &mut ps);
             if let Err(e) = window.draw() {
-                log::error!("Help Draw error: {}", e);
+                log::error!("Settings Draw error: {}", e);
             }
             EndPaint(hwnd, &ps);
             return LRESULT(0);
@@ -263,7 +263,7 @@ unsafe fn handle_settings_msg(
             let x = (lparam.0 & 0xFFFF) as i16 as i32;
             let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
             if let Err(e) = window.handle_mouse_move(x, y) {
-                log::error!("Help Mouse move error: {}", e);
+                log::error!("Settings Mouse move error: {}", e);
             }
             return LRESULT(0);
         }
@@ -273,13 +273,13 @@ unsafe fn handle_settings_msg(
         }
         WM_RBUTTONDOWN => {
             if let Err(e) = window.handle_rbutton_down() {
-                log::error!("Help Right button down error: {}", e);
+                log::error!("Settings Right button down error: {}", e);
             }
             return LRESULT(0);
         }
         WM_RBUTTONUP => {
             if let Err(e) = window.handle_rbutton_up() {
-                log::error!("Help Right button up error: {}", e);
+                log::error!("Settings Right button up error: {}", e);
             }
             return LRESULT(0);
         }

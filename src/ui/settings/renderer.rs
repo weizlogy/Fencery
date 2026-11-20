@@ -1,7 +1,11 @@
 use std::rc::Rc;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Direct2D::Common::D2D_RECT_F;
-use crate::graphics::{Canvas, GraphicsEngine, DrawingResources, layout, drawing::{background}};
+use crate::graphics::{
+    Canvas, GraphicsEngine, DrawingResources, layout,
+    drawing::{background, settings as settings_drawing},
+};
+use crate::ui::settings::model::SettingsModel;
 
 pub struct SettingsRenderer {
     canvas: Canvas,
@@ -32,6 +36,7 @@ impl SettingsRenderer {
 
     pub fn render(
         &mut self,
+        model: &SettingsModel,
         width: f32,
         height: f32,
         bg_color_hex: &str,
@@ -56,8 +61,15 @@ impl SettingsRenderer {
 
         background::draw_rounded_rect(context, &bg_rect, &bg_brush, Some(&border_brush), 1.5, 12.0);
 
-        // ヘルプテキストの描画
-        // help::draw_help(context, width, height, text_color_hex, &mut self.resources)?;
+        settings_drawing::draw_settings(
+            context,
+            width,
+            height,
+            model,
+            &mut self.resources,
+            bg_color_hex,
+            text_color_hex,
+        )?;
 
         self.canvas.end_draw(1)?;
         Ok(())

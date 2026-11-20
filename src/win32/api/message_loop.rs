@@ -1,12 +1,15 @@
 use std::rc::Rc;
+use std::sync::atomic::{AtomicI32, Ordering};
 use windows::core::PCWSTR;
+use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    DispatchMessageW, MsgWaitForMultipleObjectsEx, PeekMessageW, TranslateMessage, MSG, MWMO_INPUTAVAILABLE, PM_REMOVE, QS_ALLINPUT,
+    CallNextHookEx, DispatchMessageW, MsgWaitForMultipleObjectsEx, PeekMessageW,
+    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_MOUSE_LL, WM_MOUSEWHEEL,
+    HHOOK, MSLLHOOKSTRUCT, MSG, MWMO_INPUTAVAILABLE, PM_REMOVE, QS_ALLINPUT,
     GetCursorPos, GetWindowRect,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetKeyState, GetAsyncKeyState, VK_CONTROL};
-use windows::Win32::Foundation::{POINT, RECT};
 use tray_icon::{TrayIconEvent, menu::MenuEvent};
 use crate::ui::group::GroupWindow;
 use crate::ui::help::HelpWindow;
@@ -17,10 +20,39 @@ use crate::ui::group::interaction::InteractionAction;
 use crate::win32::vproc::window_proc;
 use crate::win32::api;
 
+/// マウスフックで受け取ったホイール量をメインループへ渡すよ。
+/// コールバックは設定ウィンドウを直接触れないので、差分だけを溜めておく。
+static PENDING_WHEEL: AtomicI32 = AtomicI32::new(0);
+
+/// 低レベルマウスフック。フォーカスに関係なくホイールを捕捉するよ。
+unsafe extern "system" fn mouse_hook_proc(
+    code: i32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    if code >= 0 && wparam.0 == WM_MOUSEWHEEL as usize {
+        let data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
+        // mouseData の上位 16bit がホイール量 (通常 ±120)
+        let delta = ((data.mouseData >> 16) & 0xFFFF) as i16;
+        PENDING_WHEEL.fetch_add(delta as i32, Ordering::Relaxed);
+    }
+    unsafe { CallNextHookEx(HHOOK::default(), code, wparam, lparam) }
+}
+
 /// ウィンドウメッセージとトレイイベントを処理し続けるループだよ！
 pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core::Error> {
     unsafe {
         let mut msg = MSG::default();
+
+        // 設定画面は WS_EX_NOACTIVATE でフォーカスを取れないから、
+        // 低レベルマウスフックでホイールを捕捉するよ。
+        let mouse_hook = SetWindowsHookExW(
+            WH_MOUSE_LL,
+            Some(mouse_hook_proc),
+            HINSTANCE::default(),
+            0,
+        )?;
+
         let tray_channel = TrayIconEvent::receiver();
         let menu_channel = MenuEvent::receiver();
 
@@ -78,6 +110,7 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
             // 1. Win32 メッセージを全て処理する
             while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
                 if msg.message == windows::Win32::UI::WindowsAndMessaging::WM_QUIT {
+                    let _ = UnhookWindowsHookEx(mouse_hook);
                     return Ok(());
                 }
 
@@ -102,6 +135,34 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
                 DispatchMessageW(&msg);
             }
 
+            // マウスフックで溜めたホイール量を設定画面へ渡すよ。
+            // フォーカスがどこにあっても届くので、表示直後だけ効くという問題は起きない。
+            let wheel_delta = PENDING_WHEEL.swap(0, Ordering::Relaxed);
+            if wheel_delta != 0 {
+                if let Some(settings) = settings_window.as_mut() {
+                    settings.handle_mouse_wheel(wheel_delta as i16);
+                }
+            }
+
+            // 設定が保存されたら、フォントを使う既存ウィンドウを全部再描画するよ。
+            if manager::take_redraw_request() {
+                for window in &mut windows {
+                    if let Err(e) = window.draw() {
+                        log::error!("Group redraw error: {}", e);
+                    }
+                }
+                if let Some(help) = help_window.as_mut() {
+                    if let Err(e) = help.draw() {
+                        log::error!("Help redraw error: {}", e);
+                    }
+                }
+                if let Some(settings) = settings_window.as_mut() {
+                    if let Err(e) = settings.draw() {
+                        log::error!("Settings redraw error: {}", e);
+                    }
+                }
+            }
+
             // 2. トレイアイコンのイベントを処理する
             if let Ok(event) = tray_channel.try_recv() {
                 handle_tray_event(event);
@@ -119,12 +180,26 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
             if ctrl_down && v_is_down && !v_was_down {
                 let mut pt = POINT::default();
                 if GetCursorPos(&mut pt).is_ok() {
+                    let mut handled = false;
                     for window in &mut windows {
                         let mut rect = RECT::default();
                         if GetWindowRect(window.hwnd, &mut rect).is_ok() {
                             if pt.x >= rect.left && pt.x <= rect.right && pt.y >= rect.top && pt.y <= rect.bottom {
                                 let _ = window.perform_action(InteractionAction::PasteColor);
+                                handled = true;
                                 break;
+                            }
+                        }
+                    }
+                    // 設定画面はグループとは別に扱うよ (フォント名やサイズも貼り付けられる)。
+                    if !handled {
+                        if let Some(settings) = settings_window.as_mut() {
+                            let mut rect = RECT::default();
+                            if GetWindowRect(settings.hwnd, &mut rect).is_ok()
+                                && pt.x >= rect.left && pt.x <= rect.right
+                                && pt.y >= rect.top && pt.y <= rect.bottom
+                            {
+                                settings.perform_paste();
                             }
                         }
                     }

@@ -1,4 +1,7 @@
-use std::sync::{LazyLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    LazyLock, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 use super::models::Settings;
 use super::storage;
 
@@ -14,6 +17,14 @@ static GLOBAL_SETTINGS: LazyLock<RwLock<Settings>> = LazyLock::new(|| {
         }
     }
 });
+
+/// 設定が保存された後にウィンドウを再描画するためのフラグだよ。
+static REDRAW_PENDING: AtomicBool = AtomicBool::new(false);
+
+/// 再描画要求を取得してクリアするよ。
+pub fn take_redraw_request() -> bool {
+    REDRAW_PENDING.swap(false, Ordering::Relaxed)
+}
 
 /// 設定値へのアクセサ関数 (読み取り用)
 pub fn get_settings_reader() -> RwLockReadGuard<'static, Settings> {
@@ -32,7 +43,8 @@ pub fn get_settings_writer() -> RwLockWriteGuard<'static, Settings> {
 /// 現在の状態をファイルに保存するよ！
 pub fn save() {
     let settings = get_settings_reader();
-    if let Err(e) = storage::save_settings(&*settings) {
-        log::error!("Failed to save settings: {}", e);
+    match storage::save_settings(&*settings) {
+        Ok(()) => REDRAW_PENDING.store(true, Ordering::Relaxed),
+        Err(e) => log::error!("Failed to save settings: {}", e),
     }
 }
