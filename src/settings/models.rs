@@ -38,16 +38,19 @@ pub struct ChildSettings {
     pub opacity: f32, // 0.0 ~ 1.0
     pub icon_size: f32, // アイコンの論理サイズ (デフォルト 48.0)
     pub icons: Vec<PersistentIconInfo>,
-    
+
     // --- マルチモニター・高DPI対応のための追加フィールド ---
-    pub monitor_name: Option<String>, 
-    pub monitor_x: Option<i32>,       
-    pub monitor_y: Option<i32>,       
+    pub monitor_name: Option<String>,
+    pub monitor_x: Option<i32>,
+    pub monitor_y: Option<i32>,
     pub dpi_scale: f32, // 保存時の DPI スケーリング倍率 (1.0 = 100%, 1.5 = 150% 等)
+
+    pub font_size: f32,
+    pub font_family: String,
 }
 
 impl ChildSettings {
-    pub fn validate(&mut self) {
+    pub fn validate(&mut self, app_settings: &AppSettings) {
         self.opacity = self.opacity.clamp(0.1, 1.0);
         self.icon_size = self.icon_size.clamp(16.0, 256.0);
         self.width = self.width.max(50);
@@ -55,6 +58,19 @@ impl ChildSettings {
 
         if self.bg_color.is_empty() || !self.bg_color.starts_with('#') {
             self.bg_color = "#FFFFFF99".to_string();
+        }
+
+        // font_size と font_family についてもバリデーション
+        // font_size: 0.0 (未設定) の場合は AppSettings の値を引き継ぐ
+        if self.font_size == 0.0 {
+            self.font_size = app_settings.font_size;
+        } else {
+            self.font_size = self.font_size.clamp(8.0, 72.0);
+        }
+
+        // font_family: 空文字列 (未設定) の場合は AppSettings の値を引き継ぐ
+        if self.font_family.is_empty() {
+            self.font_family = app_settings.font_family.clone();
         }
 
         // 画面外に飛び出している場合の救済措置
@@ -87,7 +103,7 @@ impl Settings {
     pub fn validate(&mut self) {
         self.app.validate();
         for child in self.children.values_mut() {
-            child.validate();
+            child.validate(&self.app);
         }
     }
 }
@@ -105,6 +121,8 @@ impl Default for AppSettings {
 
 impl Default for ChildSettings {
     fn default() -> Self {
+        // AppSettingsのデフォルト値を参照して初期化
+        let app_defaults = AppSettings::default();
         Self {
             x: 100,
             y: 100,
@@ -118,6 +136,8 @@ impl Default for ChildSettings {
             monitor_x: None,
             monitor_y: None,
             dpi_scale: 1.0, // デフォルトは 100%
+            font_size: app_defaults.font_size,
+            font_family: app_defaults.font_family,
         }
     }
 }

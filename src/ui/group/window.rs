@@ -3,7 +3,7 @@ use crate::ui::group::interaction::{InteractionAction, InteractionHandler};
 use crate::ui::group::model::GroupModel;
 use crate::ui::group::renderer::GroupRenderer;
 use crate::win32::api;
-use crate::settings::{manager};
+use crate::settings::{ChildSettings, manager};
 use std::rc::Rc;
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HWND, RECT};
@@ -32,12 +32,7 @@ impl GroupWindow {
         engine: Rc<GraphicsEngine>,
         id: String,
         title: String,
-        bg_color_hex: String,
-        opacity: f32,
-        icon_size: f32,
-        width: u32,
-        height: u32,
-        icons: Vec<std::path::PathBuf>,
+        child: &ChildSettings,
     ) -> Result<Box<Self>, windows::core::Error> {
         let instance = unsafe { GetModuleHandleW(None)? };
 
@@ -51,8 +46,8 @@ impl GroupWindow {
             windows::Win32::UI::WindowsAndMessaging::WINDOW_EX_STYLE(0x00200000);
 
         let options = api::create_window::WindowOptions {
-            width: width as i32,
-            height: height as i32,
+            width: child.width as i32,
+            height: child.height as i32,
             ex_style: Some(
                 WS_EX_LAYERED
                     | WS_EX_TOOLWINDOW
@@ -82,8 +77,9 @@ impl GroupWindow {
 
         api::show_window::move_to_bottom(hwnd);
 
-        let model = GroupModel::new(id, title, bg_color_hex, opacity, icon_size, icons);
-        let renderer = GroupRenderer::new(engine, hwnd, width, height)?;
+        let icons = child.icons.iter().map(|i| i.path.clone()).collect();
+        let model = GroupModel::new(id, title, child.bg_color.clone(), child.opacity, child.icon_size, icons);
+        let renderer = GroupRenderer::new(engine, hwnd, child.width, child.height)?;
         let interaction = InteractionHandler::new();
 
         let window = Box::new(Self {

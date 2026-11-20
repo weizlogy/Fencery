@@ -47,17 +47,11 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
             let settings = manager::get_settings_reader();
             for (id, child) in &settings.children {
                 log::info!("Restoring group: {}", id);
-                let icons = child.icons.iter().map(|i| i.path.clone()).collect();
                 match GroupWindow::create(
                     engine.clone(),
                     id.clone(),
                     "Restored Group".to_string(),
-                    child.bg_color.clone(),
-                    child.opacity,
-                    child.icon_size,
-                    child.width,
-                    child.height,
-                    icons,
+                    child
                 ) {
                     Ok(mut window) => {
                         windows::Win32::UI::WindowsAndMessaging::SetWindowPos(
@@ -170,7 +164,8 @@ fn handle_menu_event(
                 manager::save();
             }
 
-            match GroupWindow::create(engine.clone(), id, title, bg_color, opacity, icon_size, width, height, Vec::new()) {
+            let settings = manager::get_settings_reader();
+            match GroupWindow::create(engine.clone(), id, title, settings.children.iter().last().expect("Get newest child settings.").1) {
                 Ok(mut window) => {
                     let _ = window.draw();
                     windows.push(window);
