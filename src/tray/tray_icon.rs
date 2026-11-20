@@ -7,6 +7,7 @@ use tray_icon::{
 pub const MENU_ID_NEW_GROUP: &str = "1001";
 pub const MENU_ID_HELP: &str = "1003";
 pub const MENU_ID_OPEN_SETTINGS: &str = "1004";
+pub const MENU_ID_OPEN_SETTINGS_GUI: &str = "1005";
 pub const MENU_ID_QUIT: &str = "1002";
 
 /// トレイアイコンを作成します。
@@ -24,12 +25,14 @@ pub fn create_tray() -> TrayIcon {
     // 「新しいグループを作る」メニュー項目だよ！クリックできるように true にしてるんだ♪
     let new_group = MenuItem::with_id("1001", "New Group", true, None);
     let help_item = MenuItem::with_id("1003", "Help", true, None); // Help メニュー項目
+    let open_settings_gui = MenuItem::with_id("1005", "Settings GUI", true, None);
     let open_settings = MenuItem::with_id("1004", "Open Settings Location", true, None);
     let quit_i = MenuItem::with_id("1002", "Quit", true, None);
 
     menu.append_items(&[
         &new_group,
         &help_item,
+        &open_settings_gui,
         &open_settings,
         &PredefinedMenuItem::separator(),
         &quit_i,

@@ -14,6 +14,7 @@ use windows::Win32::{
 use windows::Win32::UI::Shell::{HDROP, DragFinish};
 use crate::ui::group::window::GroupWindow;
 use crate::ui::help::window::HelpWindow;
+use crate::ui::settings::window::SettingsWindow;
 use crate::ui::WindowType;
 use crate::win32::api;
 
@@ -42,6 +43,10 @@ pub unsafe extern "system" fn window_proc(
             WindowType::Help => {
                 let window = &mut *(ptr as *mut HelpWindow);
                 handle_help_msg(window, hwnd, msg, wparam, lparam)
+            }
+            WindowType::Settings => {
+                let window = &mut *(ptr as *mut SettingsWindow);
+                handle_settings_msg(window, hwnd, msg, wparam, lparam)
             }
         }
     }
@@ -153,6 +158,75 @@ unsafe fn handle_group_msg(
 
 unsafe fn handle_help_msg(
     window: &mut HelpWindow,
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    match msg {
+        WM_NCHITTEST => {
+            return LRESULT(HTCLIENT as isize);
+        }
+        WM_WINDOWPOSCHANGING => {
+            let window_pos = &mut *(lparam.0 as *mut WINDOWPOS);
+            window_pos.hwndInsertAfter = HWND_BOTTOM;
+            return LRESULT(0);
+        }
+        WM_MOUSEACTIVATE => {
+            return LRESULT(MA_NOACTIVATE as isize);
+        }
+        WM_PAINT => {
+            let mut ps = PAINTSTRUCT::default();
+            BeginPaint(hwnd, &mut ps);
+            if let Err(e) = window.draw() {
+                log::error!("Help Draw error: {}", e);
+            }
+            EndPaint(hwnd, &ps);
+            return LRESULT(0);
+        }
+        WM_LBUTTONDOWN => {
+            let x = (lparam.0 & 0xFFFF) as i16 as i32;
+            let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
+            window.handle_lbutton_down(x, y);
+            return LRESULT(0);
+        }
+        WM_MOUSEMOVE => {
+            let x = (lparam.0 & 0xFFFF) as i16 as i32;
+            let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
+            if let Err(e) = window.handle_mouse_move(x, y) {
+                log::error!("Help Mouse move error: {}", e);
+            }
+            return LRESULT(0);
+        }
+        WM_LBUTTONUP => {
+            window.handle_lbutton_up();
+            return LRESULT(0);
+        }
+        WM_RBUTTONDOWN => {
+            if let Err(e) = window.handle_rbutton_down() {
+                log::error!("Help Right button down error: {}", e);
+            }
+            return LRESULT(0);
+        }
+        WM_RBUTTONUP => {
+            if let Err(e) = window.handle_rbutton_up() {
+                log::error!("Help Right button up error: {}", e);
+            }
+            return LRESULT(0);
+        }
+        WM_CONTEXTMENU => {
+            return LRESULT(0);
+        }
+        WM_ERASEBKGND => {
+            return LRESULT(1);
+        }
+        _ => {}
+    }
+    DefWindowProcW(hwnd, msg, wparam, lparam)
+}
+
+unsafe fn handle_settings_msg(
+    window: &mut SettingsWindow,
     hwnd: HWND,
     msg: u32,
     wparam: WPARAM,

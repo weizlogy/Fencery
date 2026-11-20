@@ -10,6 +10,7 @@ use windows::Win32::Foundation::{POINT, RECT};
 use tray_icon::{TrayIconEvent, menu::MenuEvent};
 use crate::ui::group::GroupWindow;
 use crate::ui::help::HelpWindow;
+use crate::ui::settings::SettingsWindow;
 use crate::graphics::GraphicsEngine;
 use crate::settings::{manager, models::ChildSettings};
 use crate::ui::group::interaction::InteractionAction;
@@ -38,6 +39,7 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
         // 複数のグループウィンドウを管理する
         let mut windows: Vec<Box<GroupWindow>> = Vec::new();
         let mut help_window: Option<Box<HelpWindow>> = None;
+        let mut settings_window: Option<Box<SettingsWindow>> = None;
 
         // キーの状態管理
         let mut v_was_down = false;
@@ -89,6 +91,11 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
                             help_window = None;
                         }
                     }
+                    if let Some(ref h) = settings_window {
+                        if h.hwnd == target_hwnd {
+                            settings_window = None;
+                        }
+                    }
                 }
 
                 TranslateMessage(&msg);
@@ -102,7 +109,7 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
 
             // 3. メニューのイベントを処理する
             if let Ok(event) = menu_channel.try_recv() {
-                handle_menu_event(event, &engine, &mut windows, &mut help_window);
+                handle_menu_event(event, &engine, &mut windows, &mut help_window, &mut settings_window);
             }
 
             // 4. キー入力を監視
@@ -143,7 +150,8 @@ fn handle_menu_event(
     event: MenuEvent,
     engine: &Rc<GraphicsEngine>,
     windows: &mut Vec<Box<GroupWindow>>,
-    help_window: &mut Option<Box<HelpWindow>>
+    help_window: &mut Option<Box<HelpWindow>>,
+    settings_window: &mut Option<Box<SettingsWindow>>
 ) {
     match event.id.0.as_str() {
         "1001" => { // New Group
@@ -191,6 +199,19 @@ fn handle_menu_event(
                 if let Some(parent) = path.parent() {
                     let _ = api::shell::open_file_location(parent);
                 }
+            }
+        }
+        "1005" => { // Settings GUI
+            if settings_window.is_none() {
+                match SettingsWindow::create(engine.clone()) {
+                    Ok(mut window) => {
+                        let _ = window.draw();
+                        *settings_window = Some(window);
+                    }
+                    Err(e) => log::error!("Failed to create settings window: {}", e),
+                }
+            } else {
+                log::info!("Settings window is already open.");
             }
         }
         "1002" => { // Quit
