@@ -1,6 +1,6 @@
 [package]
 name = "fencery"
-version = "3.0.0"
+version = "3.1.0"
 edition = "2024"
 license = "MIT"
 homepage = "https://blog.weizlogy.com/software/2024/10/25/desktopgrouping.html"
@@ -10,7 +10,7 @@ description = "Fencery is a utility for Windows that helps to organize icons on 
 authors = ["weizlogy"]
 
 [dependencies]
-# 繧ｭ繝｣繝ｭ繧ｰ
+# ロガー
 log = "0.4"
 env_logger = "0.10"
 

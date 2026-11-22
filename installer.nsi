@@ -7,13 +7,13 @@
 ;--------------------------------
 
 !define APP_NAME "Fencery"
-!define APP_VERSION "3.0.0" ; Cargo.toml のバージョンと合わせるとGood!
+!define APP_VERSION "3.1.0" ; Cargo.toml のバージョンと合わせるとGood!
 !define APP_PUBLISHER "weizlogy"
 !define APP_EXE "Fencery.exe"
 !define APP_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 
 ; 生成されるインストーラーのファイル名
-; .nsi ファイルからの相対パスで target\release に出力するよ！
+; .nsi ファイルからの相対パスで target\release に出力する
 OutFile "target\release\${APP_NAME}_${APP_VERSION}_installer.exe"
 
 ; デフォルトのインストール先 (Program Files)
@@ -28,8 +28,8 @@ InstallDirRegKey HKCU "${APP_UNINSTALL_KEY}" "InstallLocation"
 ; インターフェース設定 (表示するページ)
 ;--------------------------------
 
-Page directory      ; インストール先を選んでもらうページだよ！٩( 'ω' )و
-Page components     ; インストールする機能を選んでもらうページを追加！ദ്ദി ˃ ᵕ ˂ )
+Page directory      ; インストール先を選んでもらう
+Page components     ; インストールする機能を選んでもらう
 Page instfiles      ; インストール実行中のページ
 
 UninstPage uninstConfirm ; アンインストール確認ページ
@@ -39,14 +39,14 @@ UninstPage instfiles     ; アンインストール実行中のページ
 ; インストール処理本体
 ;--------------------------------
 
-; Section "必須コンポーネント" SEC_CORE ; ← SectionIn RO を使うなら名前は表示されないよ
-Section "必須コンポーネント" SEC_CORE ; ← /o をつけると非表示セクションになるよ！
-  ; インストール先ディレクトリを作るよ
+; Section "必須コンポーネント" SEC_CORE ; ← SectionIn RO を使うなら名前は表示されない
+Section "必須コンポーネント" SEC_CORE ; ← /o をつけると非表示セクションになる
+  ; インストール先ディレクトリを作る
   SetOutPath $INSTDIR
 
-  ; ここにアプリ本体のファイルをコピーする指示を書くよ！
-  ; target\release にビルドした実行ファイルを指定してね！
-  ; スクリプトファイル(${__FILEDIR__})がある場所からの相対パスで指定するよ！ これで確実！( •̀ᄇ• ́)ﻭ✧
+  ; ここにアプリ本体のファイルをコピーする指示を書く
+  ; target\release にビルドした実行ファイルを指定
+  ; スクリプトファイル(${__FILEDIR__})がある場所からの相対パスで指定する
   File "${__FILEDIR__}\target\release\${APP_EXE}"
 
   ; --- アンインストーラー情報の書き込み ---
@@ -57,15 +57,15 @@ Section "必須コンポーネント" SEC_CORE ; ← /o をつけると非表示
   WriteRegStr HKLM "${APP_UNINSTALL_KEY}" "Publisher" "${APP_PUBLISHER}"
   WriteRegDWORD HKLM "${APP_UNINSTALL_KEY}" "NoModify" 1
   WriteRegDWORD HKLM "${APP_UNINSTALL_KEY}" "NoRepair" 1
-  WriteUninstaller "$INSTDIR\uninstall.exe" ; アンインストーラー実行ファイルを作るよ
+  WriteUninstaller "$INSTDIR\uninstall.exe" ; アンインストーラー実行ファイルを作る
 
-  ; このセクションは必ずインストールされるようにするよ！
-  SectionIn RO ; ReadOnlyで必須項目にするのだ！( •̀ω•́ )✧
+  ; このセクションは必ずインストールされるようにする
+  SectionIn RO ; ReadOnlyで必須項目にする
 SectionEnd
 
-; オプションのセクションを追加！ (o^-')b
+; オプションのセクションを追加
 Section "スタートアップに登録する" SEC_STARTUP
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}" '"$INSTDIR\${APP_EXE}"' ; パスにスペースが入るかもだから "" で囲むと安心だよ
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}" '"$INSTDIR\${APP_EXE}"' ;
 SectionEnd
 
 
@@ -74,9 +74,9 @@ SectionEnd
 ;--------------------------------
 
 ; アンインストールのメイン処理
-Section "Uninstall" ; デフォルトで表示されるアンインストールセクション名だよ
+Section "Uninstall" ; デフォルトで表示されるアンインストールセクション名
   ; --- ファイル削除 ---
-  ; インストール時に登録した場合、解除も忘れずに！
+  ; インストール時に登録した場合、解除も忘れず
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}"
 
   ; --- ファイル削除 ---
@@ -92,11 +92,4 @@ Section "Uninstall" ; デフォルトで表示されるアンインストール�
   ; --- レジストリ削除 ---
   DeleteRegKey HKLM "${APP_UNINSTALL_KEY}"
 
-  ; アンインストール時にも、スタートアップ登録を解除する処理を対応するセクションに入れるよ
-  ; Section "un.スタートアップ登録解除" など、アンインストール用のセクションを作ることもできるけど、
-  ; 今回はシンプルに Uninstall セクションに含めちゃおう！(๑•̀ㅂ•́)و✧
-  ; もしスタートアップ登録がオプションじゃなかったら、ここに書くのが普通だよ。
-  ; オプションにした場合は、インストール時に SEC_STARTUP が選択されたかどうかを
-  ; レジストリとかに記録しておいて、アンインストール時にそれをチェックして削除する…
-  ; っていうのが丁寧だけど、今回はシンプルに毎回削除トライしちゃえ！(ﾉ≧ڡ≦)☆
 SectionEnd
