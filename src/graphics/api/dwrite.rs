@@ -2,17 +2,17 @@ use windows::Win32::Graphics::DirectWrite::{
     DWriteCreateFactory, IDWriteFactory1, IDWriteFontCollection, DWRITE_FACTORY_TYPE_SHARED,
 };
 
-///  DirectWrite ファクトリを作成するよ！
+/// DirectWrite ファクトリを作成する。
 pub fn create_factory() -> Result<IDWriteFactory1, windows::core::Error> {
     unsafe {
         DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED)
     }
 }
 
-/// システムにインストールされているフォントファミリ名を列挙するよ！
+/// インストール済みのフォントファミリ名を列挙する。
 ///
-/// config.toml の `font_family` は "Meiryo" のような英語名で保存されているので、
-/// ロケール名は en-US を優先する。無ければ ja-JP、さらに無ければ先頭の名前を使う。
+/// `config.toml` の `font_family` は "Meiryo" などの英語名で保存されるため、
+/// ロケール名は en-US、ja-JP の順に優先し、見つからなければ先頭の名前を使用する。
 pub fn get_installed_font_families(
     factory: &IDWriteFactory1,
 ) -> Result<Vec<String>, windows::core::Error> {
@@ -30,7 +30,7 @@ pub fn get_installed_font_families(
                 continue;
             }
 
-            // 保存済みの値と一致させるため英語名を優先するよ。
+            // 保存済みの値との一致を優先するため英語名を選ぶ。
             let mut index = 0u32;
             let mut exists = windows::Win32::Foundation::BOOL(0);
             let _ = names.FindLocaleName(windows::core::w!("en-US"), &mut index, &mut exists);
@@ -42,7 +42,7 @@ pub fn get_installed_font_families(
             }
 
             let len = names.GetStringLength(index)? as usize;
-            let mut buf = vec![0u16; len + 1]; // 終端 null 分
+            let mut buf = vec![0u16; len + 1]; // 終端 null の分を確保する。
             names.GetString(index, &mut buf)?;
             let name = String::from_utf16_lossy(&buf[..len]);
             if !name.is_empty() {

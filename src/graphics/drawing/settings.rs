@@ -28,7 +28,7 @@ fn to_rect(r: UiRect) -> D2D_RECT_F {
     }
 }
 
-/// 1 行のテキストを描画して、その高さを返すよ。
+/// 1 行のテキストを描画し、その高さを返す。
 fn draw_line(
     factory: &IDWriteFactory1,
     context: &ID2D1DeviceContext,
@@ -65,7 +65,7 @@ fn stroke_rect(context: &ID2D1DeviceContext, r: UiRect, brush: &ID2D1SolidColorB
     unsafe { context.DrawRectangle(&to_rect(r), brush, width, None) };
 }
 
-/// スライダーのトラック・塗り・つまみを描画するよ。
+/// スライダーのトラック・塗りつぶし・つまみを描画する。
 fn draw_slider(
     context: &ID2D1DeviceContext,
     r: UiRect,
@@ -149,7 +149,7 @@ fn draw_font_section(
         )?;
     }
 
-    // プレビュー枠はこのページのフォントで描画するよ。
+    // プレビューにはページで選択中のフォントを使用する。
     let preview_rect = UiRect::new(left, 134.0, content_width, 34.0);
     fill_rect(context, preview_rect, panel_brush);
     stroke_rect(context, preview_rect, border_brush, 1.0);
@@ -198,7 +198,7 @@ fn draw_font_section(
         )?;
     }
 
-    // value / slider / list のホバーは枠の色で軽く示すよ。
+    // 値・スライダー・リストのホバーは枠線で示す。
     if hovered == Some(targets.value) {
         stroke_rect(context, LAYOUT.font_size_value, accent_brush, 1.0);
     }
@@ -212,7 +212,7 @@ fn draw_font_section(
     Ok(())
 }
 
-/// 設定画面の UI を描画するよ。背景は呼び出し側が先に描画しておく。
+/// 設定画面の UI を描画する。背景は呼び出し側が先に描画する。
 pub fn draw_settings(
     context: &ID2D1DeviceContext,
     width: f32,
@@ -222,7 +222,7 @@ pub fn draw_settings(
     bg_color_hex: &str,
     text_color_hex: &str,
 ) -> Result<(), windows::core::Error> {
-    // ブラシとフォーマットを先に全部作って、あとは resources を触らないよ。
+    // ブラシとフォーマットを先に生成し、描画中は resources を変更しない。
     let bg_brush = resources.get_brush(context, bg_color_hex)?;
     let bg_color = unsafe { bg_brush.GetColor() };
     let is_dark = crate::graphics::layout::is_dark_color(bg_color.r, bg_color.g, bg_color.b);
@@ -296,7 +296,7 @@ pub fn draw_settings(
     )?;
     stroke_rect(context, UiRect::new(left, 40.0, content_width, 1.0), border_brush, 1.0);
 
-    // このページで使うフォント設定を決めるよ。
+    // ページに応じてプレビュー用のフォント設定を選ぶ。
     let (font_family, font_size) = match model.current_child() {
         Some(child) if model.page > 0 => (&child.draft.font_family, child.draft.font_size),
         _ => (&model.draft.font_family, model.draft.font_size),
@@ -370,7 +370,7 @@ pub fn draw_settings(
             content_width,
         )?;
     } else if let Some(child) = model.current_child() {
-        // 子ページもフォントセクションはメインと同じレイアウトだよ。
+        // 子ページでもメインと同一のレイアウトを使用する。
         draw_font_section(
             context,
             &dwrite_factory,

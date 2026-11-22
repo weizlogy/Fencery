@@ -6,7 +6,7 @@ use crate::graphics::layout;
 use crate::ui::group::model::GroupModel;
 use crate::win32::api::shell;
 
-/// グループ全体を描画するメインコーディネーターだよ！
+/// グループの背景・アイコン・ラベルを描画する。
 pub fn draw_group(
     context: &ID2D1DeviceContext,
     width: f32,
@@ -14,15 +14,15 @@ pub fn draw_group(
     model: &GroupModel,
     resources: &mut DrawingResources,
 ) -> Result<(), windows::core::Error> {
-    // 1. 背景と枠線の描画
+    // 背景と枠線を描画する。
     let bg_rect = D2D_RECT_F { left: 0.0, top: 0.0, right: width, bottom: height };
     let bg_brush = resources.get_brush(context, &model.bg_color_hex)?;
     
-    // 背景色に合わせてテキスト色を決めるよ (unsafe が必要)
+    // 背景色の取得には unsafe が必要である。
     let bg_color = unsafe { bg_brush.GetColor() };
     let is_dark = layout::is_dark_color(bg_color.r, bg_color.g, bg_color.b);
     
-    // 背景が暗いなら白, 明るいなら黒のテキストにするんだ
+    // 暗い背景には白、明るい背景には黒を使用する。
     let text_color_hex = if is_dark { "#FFFFFFFF" } else { "#000000FF" };
     let border_color_hex = if is_dark { "#FFFFFF33" } else { "#00000033" };
 
@@ -35,7 +35,7 @@ pub fn draw_group(
 
     background::draw_rounded_rect(context, &bg_rect, &bg_brush, Some(&border_brush), 1.5, 8.0);
 
-    // 2. アイコンとラベルの描画
+    // アイコンとラベルを描画する。
     if !model.icons.is_empty() {
         let layouts = layout::calculate_grid_layout(width, model.icons.len(), model.icon_size, model.font_size, 1.0);
         let icon_label_brush = resources.get_brush(context, text_color_hex)?;
@@ -51,7 +51,7 @@ pub fn draw_group(
         for (i, icon_state) in model.icons.iter().enumerate() {
             if let Some(layout) = layouts.get(i) {
                 
-                // ホバーや実行中のハイライト描画
+                // 実行中・ホバー中のハイライトを描画する。
                 if model.executing_index == Some(i) {
                     background::draw_rounded_rect(
                         context, &layout.hit_rect, &executing_bg_brush, Some(&executing_border_brush), 1.5, 4.0,
@@ -63,7 +63,7 @@ pub fn draw_group(
                 }
 
                 if icon_state.exists {
-                    // アイコンが存在する場合の通常描画
+                    // ファイルが存在する場合は通常描画する。
                     if let Some(hicon) = shell::get_icon_for_path(&icon_state.path) {
                         if let Ok(bitmap) = resources.get_icon_bitmap(context, hicon) {
                             icon::draw_icon(context, &bitmap, &layout.icon_rect, 1.0);
@@ -72,14 +72,14 @@ pub fn draw_group(
                     }
                     label::draw_text(context, &icon_state.name, &layout.text_rect, &icon_label_brush, &format);
                 } else {
-                    // 存在しないアイコン: 背景色の反転色で四角を描画
+                    // 存在しない場合は反転色の矩形で代替表示する。
                     let (ir, ig, ib) = layout::invert_color(bg_color.r, bg_color.g, bg_color.b);
                     let inv_hex = format!("#{:02X}{:02X}{:02X}FF", (ir * 255.0) as u8, (ig * 255.0) as u8, (ib * 255.0) as u8);
                     let inv_brush = resources.get_brush(context, &inv_hex)?;
                     
                     background::draw_rounded_rect(context, &layout.icon_rect, &inv_brush, None, 0.0, 4.0);
                     
-                    // 警告色のラベルで強調
+                    // 警告色でラベルを強調する。
                     let err_color_hex = layout::get_error_text_color(is_dark);
                     let err_brush = resources.get_brush(context, err_color_hex)?;
                     label::draw_text(context, &icon_state.name, &layout.text_rect, &err_brush, &format);

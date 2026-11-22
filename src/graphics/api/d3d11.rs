@@ -6,22 +6,23 @@ use windows::Win32::Graphics::Direct3D11::{
     D3D11_SDK_VERSION,
 };
 
-/// D3D11 デバイスとデバイスコンテキストを作成するよ！
-/// Direct2D と連携するために BGRA サポートを有効にするのがポイントだよ。
+/// D3D11 デバイスとデバイスコンテキストを作成する。
+///
+/// Direct2D との相互運用のため BGRA サポートを有効化する。
 pub fn create_device() -> Result<(ID3D11Device, ID3D11DeviceContext), windows::core::Error> {
     unsafe {
         let mut device = None;
         let mut context = None;
         let mut feature_level = D3D_FEATURE_LEVEL_11_0;
 
-        // 試行する機能レベルのリスト
+        // 対応を試行する機能レベル。
         let feature_levels = [D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0];
 
         D3D11CreateDevice(
             None,
             D3D_DRIVER_TYPE_HARDWARE,
             None,
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT, // これがないと Direct2D が動かないよ
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT, // Direct2D との連携に必須。
             Some(&feature_levels),
             D3D11_SDK_VERSION,
             Some(&mut device),

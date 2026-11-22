@@ -26,7 +26,7 @@ pub struct SettingsWindow {
     pub hwnd: HWND,
     pub renderer: SettingsRenderer,
     pub model: SettingsModel,
-    /// ウィンドウ自身の見た目だけど、設定項目ではないので config.toml には保存しないよ。
+    /// ウィンドウ自身の外観。設定項目ではないため保存対象外とする。
     bg_color_hex: String,
     opacity: f32,
     is_dragging: bool,
@@ -47,7 +47,7 @@ impl SettingsWindow {
         let width = WINDOW_WIDTH as i32;
         let height = WINDOW_HEIGHT as i32;
 
-        // 保存位置が仮想画面内なら使う。ダメなら中央付近に戻す (最低限の救済)。
+        // 保存位置が画面外の場合は中央付近へ配置する。
         let screen_w = unsafe { GetSystemMetrics(SM_CXSCREEN) };
         let screen_h = unsafe { GetSystemMetrics(SM_CYSCREEN) };
         let default_x = (screen_w - width) / 2 + 50;
@@ -76,13 +76,13 @@ impl SettingsWindow {
 
         api::show_window::move_to_bottom(hwnd);
 
-        // 設定画面自身の見た目はグループと同じくランダム。編集項目ではないよ。
+        // 設定ウィンドウ自身の外観はランダムとし、編集対象から除外する。
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let bg_color_hex = format!("#{:02X}{:02X}{:02X}", rng.gen_range(50..200), rng.gen_range(50..200), rng.gen_range(50..200));
         let opacity = rng.gen_range(0.6..0.85);
 
-        // インストール済みフォントを DirectWrite から列挙するよ。
+        // インストール済みフォントを DirectWrite から列挙する。
         let font_families = match dwrite_api::get_installed_font_families(&engine.dwrite_factory) {
             Ok(list) => list,
             Err(e) => {
@@ -91,7 +91,7 @@ impl SettingsWindow {
             }
         };
 
-        // 全体設定と子ウィンドウ設定をまとめて draft にコピーするよ。
+        // 全体設定と子設定を編集用の draft へ複製する。
         let settings = manager::get_settings_reader().clone();
         let model = SettingsModel::new(&settings, font_families);
 
@@ -126,7 +126,7 @@ impl SettingsWindow {
         let ctrl_down = unsafe { (GetKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0 };
 
         if ctrl_down {
-            // 既存の操作を維持: Ctrl + ドラッグでウィンドウを移動するよ。
+            // Ctrl + ドラッグではウィンドウを移動する。
             self.is_dragging = true;
             self.last_mouse_pos = (x, y);
             unsafe { SetCapture(self.hwnd); }
@@ -185,7 +185,7 @@ impl SettingsWindow {
             return Ok(());
         }
 
-        // スライダーをドラッグ中なら x 座標から値を更新するよ。
+        // スライダー操作中は x 座標から値を更新する。
         if let Some((field, _, _)) = self.model.active_slider {
             match field {
                 NumericField::FontSize => self.model.set_font_size_from_x(x as f32),
@@ -230,8 +230,9 @@ impl SettingsWindow {
         }
     }
 
-    /// 現在の表示位置を config.toml に保存するよ。
-    /// 位置だけの変更なので再描画フラグは立てない。
+    /// 現在の表示位置を設定ファイルへ保存する。
+    ///
+    /// 位置のみの変更であるため再描画は不要。
     fn save_position(&self) {
         let mut rect = RECT::default();
         if unsafe { GetWindowRect(self.hwnd, &mut rect) }.is_err() {
@@ -244,10 +245,10 @@ impl SettingsWindow {
         manager::save_quiet();
     }
 
-    /// ホイールで数値やリストを操作するよ。Shift を押していればstep を 5 倍にする。
+    /// ホイールで数値・リストを操作する。`Shift` 押下時は変化量を 5 倍にする。
     ///
-    /// hovered は WM_MOUSEMOVE でしか更新されないので、ここではマウス座標から
-    /// 直接ヒットテストするよ。マウスを動かさずにホイールだけ回しても効く。
+    /// `hovered` は `WM_MOUSEMOVE` 時のみ更新されるため、ここではカーソル座標から
+    /// 直接ヒットテストする。カーソルを動かさずにホイール操作した場合も有効とする。
     pub fn handle_mouse_wheel(&mut self, delta: i16) {
         let mut pt = POINT::default();
         let mut rect = RECT::default();
@@ -288,13 +289,13 @@ impl SettingsWindow {
         let _ = self.draw();
     }
 
-    /// グループと同じ Ctrl+V で、ページに応じた値を貼り付けられるよ。
+    /// ページに応じた値を `Ctrl` + `V` で貼り付ける。
     pub fn perform_paste(&mut self) {
         let Some(text_raw) = api::utils::get_clipboard_text() else { return };
         let text = text_raw.trim();
 
         if self.model.page == 0 {
-            // メインページ: フォント名とフォントサイズ
+            // メインページではフォント名とサイズを受け付ける。
             if let Some(name) = text.strip_prefix("font:") {
                 let name = name.trim().to_string();
                 if !name.is_empty() {
@@ -311,7 +312,7 @@ impl SettingsWindow {
                 }
             }
         } else {
-            // 子ページ: フォント・フォントサイズ・色
+            // 子ページではフォント・サイズ・色を受け付ける。
             if let Some(name) = text.strip_prefix("font:") {
                 let name = name.trim().to_string();
                 if !name.is_empty() {
@@ -335,7 +336,7 @@ impl SettingsWindow {
         }
     }
 
-    /// クリップボードの色を現在の子ウィンドウに貼り付けるよ。
+    /// クリップボードの色を現在の子ウィンドウへ適用する。
     fn paste_color_to_child(&mut self) {
         let Some(text_raw) = api::utils::get_clipboard_text() else { return };
         let mut hex = text_raw.trim().to_string();
@@ -348,7 +349,7 @@ impl SettingsWindow {
         let _ = self.draw();
     }
 
-    /// draft をグローバル設定へ反映して config.toml に保存するよ。
+    /// draft をグローバル設定へ反映し、設定ファイルへ保存する。
     fn save(&mut self) {
         self.model.validate_draft();
         let mut rect = RECT::default();
@@ -358,7 +359,7 @@ impl SettingsWindow {
             None
         };
         {
-            // ガードをここで drop しないと、manager::save() が read lock を取るときにデッドロックするよ。
+            // ここでロックを解放しないと `manager::save()` の read lock 取得時にデッドロックする。
             let mut settings = manager::get_settings_writer();
             settings.app = self.model.draft.clone();
             for entry in &self.model.children {

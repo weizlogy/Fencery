@@ -2,7 +2,7 @@ use windows::Win32::Graphics::Direct2D::{ID2D1DeviceContext, ID2D1SolidColorBrus
 use windows::Win32::Graphics::Direct2D::Common::D2D_RECT_F;
 use windows::Win32::Graphics::DirectWrite::IDWriteTextFormat;
 
-/// ラベル (テキスト) を描画するよ！
+/// テキストを描画する。
 pub fn draw_text(
     context: &ID2D1DeviceContext,
     text: &str,
@@ -10,7 +10,7 @@ pub fn draw_text(
     brush: &ID2D1SolidColorBrush,
     format: &IDWriteTextFormat,
 ) {
-    // Wide string に変換
+    // DirectWrite 向けに UTF-16 へ変換する。
     let wide_text: Vec<u16> = text.encode_utf16().collect();
 
     unsafe {

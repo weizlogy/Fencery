@@ -5,9 +5,9 @@ use std::sync::{
 use super::models::Settings;
 use super::storage;
 
-/// 全体で共有する設定インスタンスだよ！
+/// プロセス全体で共有する設定インスタンス。
 static GLOBAL_SETTINGS: LazyLock<RwLock<Settings>> = LazyLock::new(|| {
-    // 起動時にファイルを読み込む
+    // 初回アクセス時に設定ファイルを読み込む。
     match storage::load_settings() {
         Ok(settings) => RwLock::new(settings),
         Err(e) => {
@@ -18,22 +18,22 @@ static GLOBAL_SETTINGS: LazyLock<RwLock<Settings>> = LazyLock::new(|| {
     }
 });
 
-/// 設定が保存された後にウィンドウを再描画するためのフラグだよ。
+/// 保存後にウィンドウへ再描画を要求するためのフラグ。
 static REDRAW_PENDING: AtomicBool = AtomicBool::new(false);
 
-/// 再描画要求を取得してクリアするよ。
+/// 再描画要求を取得し、フラグをクリアする。
 pub fn take_redraw_request() -> bool {
     REDRAW_PENDING.swap(false, Ordering::Relaxed)
 }
 
-/// 設定値へのアクセサ関数 (読み取り用)
+/// 設定への読み取り専用アクセスを取得する。
 pub fn get_settings_reader() -> RwLockReadGuard<'static, Settings> {
     GLOBAL_SETTINGS
         .read()
         .expect("Failed to acquire read lock on settings")
 }
 
-/// 設定値へのアクセサ関数 (書き込み用)
+/// 設定への書き込みアクセスを取得する。
 pub fn get_settings_writer() -> RwLockWriteGuard<'static, Settings> {
     GLOBAL_SETTINGS
         .write()
@@ -52,12 +52,12 @@ fn write_settings(flag_redraw: bool) {
     }
 }
 
-/// 現在の状態をファイルに保存するよ！ (再描画も要求する)
+/// 現在の状態を保存し、再描画を要求する。
 pub fn save() {
     write_settings(true);
 }
 
-/// ウィンドウ位置だけが変わったときなど、再描画が不要な保存に使うよ。
+/// 位置変更など再描画が不要な保存に使用する。
 pub fn save_quiet() {
     write_settings(false);
 }

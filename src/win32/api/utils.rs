@@ -7,7 +7,7 @@ use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
 use windows::Win32::System::Ole::CF_UNICODETEXT;
 use windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
 
-/// Rust の文字列を Windows API 用の null 終端ワイド文字列 (Vec<u16>) に変換するよ！
+/// Rust の文字列を null 終端のワイド文字列へ変換する。
 pub fn to_wide(s: &str) -> Vec<u16> {
     OsStr::new(s)
         .encode_wide()
@@ -15,7 +15,7 @@ pub fn to_wide(s: &str) -> Vec<u16> {
         .collect()
 }
 
-/// クリップボードからテキストを取得するよ！
+/// クリップボードから UNICODE テキストを取得する。
 pub fn get_clipboard_text() -> Option<String> {
     unsafe {
         if OpenClipboard(None).is_err() {
@@ -27,8 +27,7 @@ pub fn get_clipboard_text() -> Option<String> {
             let hglobal = HGLOBAL(handle.0 as *mut _);
             let ptr = GlobalLock(hglobal);
             if !ptr.is_null() {
-                // ワイド文字列 (u16) として読み取る
-                // 実際には null 終端まで読み取る必要があるよ
+                // null 終端まで走査して文字列の長さを求める。
                 let mut len = 0;
                 while * ( (ptr as *const u16).add(len) ) != 0 {
                     len += 1;
@@ -44,7 +43,7 @@ pub fn get_clipboard_text() -> Option<String> {
     }
 }
 
-/// HDROP ハンドルからファイルパスのリストを取得するよ！
+/// ドロップされたファイルのパスを列挙する。
 pub fn get_dropped_files(hdrop: HDROP) -> Vec<PathBuf> {
     unsafe {
         let count = DragQueryFileW(hdrop, 0xFFFFFFFF, None);

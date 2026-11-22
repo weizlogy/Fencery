@@ -18,7 +18,7 @@ use crate::ui::settings::window::SettingsWindow;
 use crate::ui::WindowType;
 use crate::win32::api;
 
-/// ウィンドウに対するメッセージを裁くプロシージャだよ！
+/// ウィンドウメッセージを種類ごとのハンドラへ振り分ける。
 pub unsafe extern "system" fn window_proc(
     hwnd: HWND,
     msg: u32,
@@ -32,7 +32,7 @@ pub unsafe extern "system" fn window_proc(
             return DefWindowProcW(hwnd, msg, wparam, lparam);
         }
 
-        // 最初のフィールド(WindowType)をチェックするよ！
+        // 各ウィンドウ構造体は先頭フィールドに WindowType を置く。
         let window_type = *(ptr as *const WindowType);
 
         match window_type {
@@ -117,7 +117,7 @@ fn handle_group_msg(
             return LRESULT(0);
         }
         WM_CONTEXTMENU => {
-            return LRESULT(0); // デスクトップにメッセージが伝わらないようにトラップするよ
+            return LRESULT(0); // デスクトップへの伝播を遮断する。
         }
         WM_MOUSEMOVE => {
             if let Err(e) = window.handle_mouse_move() {

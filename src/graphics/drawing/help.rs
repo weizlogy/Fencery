@@ -1,8 +1,8 @@
 use windows::Win32::Graphics::Direct2D::ID2D1DeviceContext;
-use windows::Win32::Graphics::Direct2D::Common::{D2D_RECT_F, D2D_POINT_2F};
+use windows::Win32::Graphics::Direct2D::Common::{D2D_POINT_2F};
 use crate::graphics::drawing::resources::DrawingResources;
 
-/// 操作説明テキストを定数として定義
+/// ヘルプに表示する操作説明。
 const OPERATION_INSTRUCTIONS: [&str; 15] = [
     "## 操作説明",
     "### ■ Create Groups:",
@@ -21,11 +21,11 @@ const OPERATION_INSTRUCTIONS: [&str; 15] = [
     "  - Ctrl + Right-click: グループの何もない場所を右クリックして削除。",
 ];
 
-/// ヘルプ（操作ガイド）を描画する専用の関数だよ！
+/// 操作ガイドを描画する。
 pub fn draw_help(
     context: &ID2D1DeviceContext,
     width: f32,
-    height: f32, // 未使用だけどシグネチャ維持
+    _height: f32, // 他描画関数とのシグネチャ統一のため残す。
     text_color_hex: &str,
     resources: &mut DrawingResources,
 ) -> Result<(), windows::core::Error> {
@@ -45,7 +45,7 @@ pub fn draw_help(
         let trimmed_line = line.trim();
         let mut x_offset = padding;
 
-        // 簡単な Markdown 記法のパース
+        // 簡易的な見出し・箇条書き記法を解析する。
         let display_text = if trimmed_line.starts_with("## ") {
             &trimmed_line[3..]
         } else if trimmed_line.starts_with("### ") {
@@ -62,20 +62,20 @@ pub fn draw_help(
             continue;
         }
 
-        // DirectWrite TextLayout を使って、折り返し後の高さを正確に測るよ！
+        // TextLayout により折り返し後の高さを正確に測定する。
         let wide_text: Vec<u16> = display_text.encode_utf16().collect();
         unsafe {
             let layout = dwrite_factory.CreateTextLayout(
                 &wide_text,
                 &format,
                 max_text_width - (x_offset - padding),
-                1000.0, // 十分な高さ
+                1000.0, // 高さ制限の上限として十分な値。
             )?;
 
             let mut metrics = windows::Win32::Graphics::DirectWrite::DWRITE_TEXT_METRICS::default();
             layout.GetMetrics(&mut metrics)?;
 
-            // 描画実行
+            // テキストを描画する。
             context.DrawTextLayout(
                 D2D_POINT_2F { x: x_offset, y: current_y },
                 &layout,
@@ -83,7 +83,7 @@ pub fn draw_help(
                 windows::Win32::Graphics::Direct2D::D2D1_DRAW_TEXT_OPTIONS_NONE,
             );
 
-            // 描画した高さ分だけ Y 座標を進める
+            // 描画した高さだけ次の行へ進める。
             current_y += metrics.height + (base_font_size * 0.4);
         }
     }

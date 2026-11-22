@@ -1,32 +1,33 @@
 use windows::Win32::Graphics::Direct2D::Common::D2D_RECT_F;
 
-/// アイコン1つあたりのレイアウト情報だよ！
+/// アイコン 1 つ分のレイアウト情報。
 pub struct ItemLayout {
     pub icon_rect: D2D_RECT_F,
     pub text_rect: D2D_RECT_F,
-    pub hit_rect: D2D_RECT_F, // ホバー判定やドラッグ開始判定に使うよ
+    pub hit_rect: D2D_RECT_F, // ホバー・ドラッグ判定に使用する。
 }
 
 pub const PADDING: f32 = 4.0;
-pub const TEXT_HEIGHT_RATIO: f32 = 0.4; // アイコンサイズに対するテキスト高さの比率
+pub const TEXT_HEIGHT_RATIO: f32 = 0.4; // アイコンサイズに対するテキスト高さの比率。
 
-/// グリッド配置（リフロー対応）を計算するよ！
-/// window_width に合わせて列数を自動調整するんだ。
+/// グリッド配置を計算する。
+///
+/// `window_width` に応じて列数を自動調整する。
 pub fn calculate_grid_layout(
     window_width: f32,
     item_count: usize,
     icon_size: f32,
     font_size: f32,
-    _scale_factor: f32, // 将来的に DPI スケーリングに対応するための予約
+    _scale_factor: f32, // 将来の DPI 対応のために予約された引数。
 ) -> Vec<ItemLayout> {
     let mut layouts = Vec::with_capacity(item_count);
     
-    // アイコンサイズとフォントサイズに基づいてセルサイズを決定するよ
-    let cell_width = icon_size + 42.0; // 左右に余白を持たせる
-    let text_height = font_size * 1.5; // 行間に余裕を持たせる
+    // アイコンサイズとフォントサイズからセルサイズを求める。
+    let cell_width = icon_size + 42.0; // 左右の余白分を加算する。
+    let text_height = font_size * 1.5; // 行間の余裕を確保する。
     let cell_height = icon_size + text_height + 12.0;
 
-    // 1列に何個入るか計算 (最低1列)
+    // 列数を求める（最低 1 列）。
     let cols = ((window_width - PADDING) / cell_width).floor().max(1.0) as usize;
     
     for i in 0..item_count {
@@ -36,7 +37,7 @@ pub fn calculate_grid_layout(
         let x = PADDING + col as f32 * cell_width;
         let y = PADDING + row as f32 * cell_height;
         
-        // アイコンの矩形 (セル内中央上部)
+        // アイコンの矩形（セル内の中央上部）。
         let icon_x = x + (cell_width - icon_size) / 2.0;
         let icon_y = y + 4.0;
         let icon_rect = D2D_RECT_F {
@@ -46,7 +47,7 @@ pub fn calculate_grid_layout(
             bottom: icon_y + icon_size,
         };
         
-        // テキストの矩形 (アイコンの下)
+        // テキストの矩形（アイコンの下）。
         let text_rect = D2D_RECT_F {
             left: x + 2.0,
             top: icon_rect.bottom + 2.0,
@@ -54,7 +55,7 @@ pub fn calculate_grid_layout(
             bottom: icon_rect.bottom + 2.0 + text_height,
         };
         
-        // ヒットテスト用の矩形 (セル全体)
+        // ヒットテスト用の矩形（セル全体）。
         let hit_rect = D2D_RECT_F {
             left: x,
             top: y,
@@ -72,23 +73,23 @@ pub fn calculate_grid_layout(
     layouts
 }
 
-/// 背景色から見やすいテキスト色を選択するための輝度計算
+/// 背景色に対するテキスト色の選択に用いる輝度を求める。
 pub fn is_dark_color(r: f32, g: f32, b: f32) -> bool {
-    // 相対輝度を計算 (WCAG)
+    // WCAG の相対輝度を計算する。
     let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     luminance < 0.5
 }
 
-/// 色を反転させるよ (透明度は維持)
+/// RGB を反転する（アルファは維持）。
 pub fn invert_color(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     (1.0 - r, 1.0 - g, 1.0 - b)
 }
 
-/// 背景色に応じて, エラー時に目立つテキスト色を返すよ
+/// 背景色に応じてエラー表示用のテキスト色を返す。
 pub fn get_error_text_color(is_dark_bg: bool) -> &'static str {
     if is_dark_bg {
-        "#FF9900FF" // 暗い背景にはオレンジ
+        "#FF9900FF" // 暗い背景にはオレンジ。
     } else {
-        "#CC0000FF" // 明るい背景には濃い赤
+        "#CC0000FF" // 明るい背景には濃い赤。
     }
 }

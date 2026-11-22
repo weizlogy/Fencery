@@ -3,28 +3,24 @@ use tray_icon::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
 };
 
-// トレイメニューのIDを定数化するよっ！٩(ˊᗜˋ*)و
+/// トレイメニューの項目 ID。
 pub const MENU_ID_NEW_GROUP: &str = "1001";
 pub const MENU_ID_HELP: &str = "1003";
 pub const MENU_ID_OPEN_SETTINGS: &str = "1004";
 pub const MENU_ID_OPEN_SETTINGS_GUI: &str = "1005";
 pub const MENU_ID_QUIT: &str = "1002";
 
-/// トレイアイコンを作成します。
+/// トレイアイコンを作成する。
 ///
-/// # 説明
-///
-/// メニュー項目を設定し、トレイアイコンを初期化します。
+/// メニューを構築し、アイコンリソースとツールチップを設定してトレイへ登録する。
 ///
 /// # 戻り値
 ///
-/// 作成されたトレイアイコン。
+/// 登録済みのトレイアイコン。
 pub fn create_tray() -> TrayIcon {
-    // まずは、トレイアイコンに表示するメニューを作るよ！(*´ω｀*)
     let menu = Menu::new();
-    // 「新しいグループを作る」メニュー項目だよ！クリックできるように true にしてるんだ♪
     let new_group = MenuItem::with_id("1001", "New Group", true, None);
-    let help_item = MenuItem::with_id("1003", "Help", true, None); // Help メニュー項目
+    let help_item = MenuItem::with_id("1003", "Help", true, None);
     let open_settings_gui = MenuItem::with_id("1005", "Settings GUI", true, None);
     let open_settings = MenuItem::with_id("1004", "Open Settings Location", true, None);
     let quit_i = MenuItem::with_id("1002", "Quit", true, None);
@@ -39,15 +35,11 @@ pub fn create_tray() -> TrayIcon {
     ])
     .expect("menu append.");
 
-
-    // よーし、いよいよトレイアイコン本体を作るよ！٩(ˊᗜˋ*)و
-    return TrayIconBuilder::new()
-        // さっき作ったメニューを、トレイアイコンにセット！
+    TrayIconBuilder::new()
         .with_menu(Box::new(menu))
-        // マウスを乗せた時に出る説明文（ツールチップ）も設定するよ！
         .with_tooltip("Fencery")
-        // アプリのアイコンも忘れずに設定！リソースID 1番のアイコンを使うんだね！(・∀・)
+        // 実行ファイルに埋め込まれたリソース ID 1 のアイコンを使用する。
         .with_icon(Icon::from_resource(1, None).unwrap())
         .build()
-        .expect("Failed to create tray icon");
+        .expect("Failed to create tray icon")
 }

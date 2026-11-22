@@ -39,11 +39,11 @@ impl HelpWindow {
         let width = 450;
         let height = 600;
 
-        // 保存位置が仮想画面内なら使う。ダメなら中央付近に戻す (最低限の救済)。
+        // 保存位置が画面外の場合は中央付近へ配置する。
         let screen_w = unsafe { GetSystemMetrics(SM_CXSCREEN) };
         let screen_h = unsafe { GetSystemMetrics(SM_CYSCREEN) };
-        let default_x = (screen_w - width) / 2 + 50; // 少し右にずらす
-        let default_y = (screen_h - height) / 2 - 50; // 少し上にずらす
+        let default_x = (screen_w - width) / 2 + 50; // 中央より右へずらす。
+        let default_y = (screen_h - height) / 2 - 50; // 中央より上へずらす。
         let (x, y) = match initial {
             Some((x, y)) if WindowPosition { x, y }.is_on_screen() => (x, y),
             _ => (default_x, default_y),
@@ -68,7 +68,7 @@ impl HelpWindow {
 
         api::show_window::move_to_bottom(hwnd);
 
-        // ランダムな色と透過度
+        // 表示ごとに異なる外観を与える。
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let bg_color_hex = format!("#{:02X}{:02X}{:02X}", rng.gen_range(50..200), rng.gen_range(50..200), rng.gen_range(50..200));
@@ -134,8 +134,9 @@ impl HelpWindow {
         }
     }
 
-    /// 現在の表示位置を config.toml に保存するよ。
-    /// 位置だけの変更なので再描画フラグは立てない。
+    /// 現在の表示位置を設定ファイルへ保存する。
+    ///
+    /// 位置のみの変更であるため再描画は不要。
     fn save_position(&self) {
         let mut rect = RECT::default();
         if unsafe { GetWindowRect(self.hwnd, &mut rect) }.is_err() {
@@ -149,7 +150,7 @@ impl HelpWindow {
     }
 
     pub fn handle_rbutton_down(&mut self) -> Result<(), windows::core::Error> {
-        // ボタン押し下げ時は何もしない（UPで削除処理を行うため）
+        // 削除処理はボタン解放時に行う。
         Ok(())
     }
 
@@ -158,12 +159,12 @@ impl HelpWindow {
         let ctrl_down = unsafe { (GetKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0 };
 
         if ctrl_down {
-            // 閉じる前に最後の位置を保存するよ。
+            // 閉じる前に最終位置を保存する。
             self.save_position();
-            // ヘルプを閉じる (UPイベントで実行することで, デスクトップにメニューが出ないようにする)
+            // 解放時に閉じることでデスクトップのコンテキストメニュー表示を避ける。
             unsafe {
                 windows::Win32::UI::WindowsAndMessaging::PostMessageW(
-                    windows::Win32::Foundation::HWND(0), // スレッドメッセージとして送信
+                    windows::Win32::Foundation::HWND(0), // スレッドメッセージとして送信する。
                     api::WM_REMOVE_WINDOW,
                     windows::Win32::Foundation::WPARAM(self.hwnd.0 as usize),
                     windows::Win32::Foundation::LPARAM(0),

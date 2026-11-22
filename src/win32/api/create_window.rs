@@ -9,8 +9,9 @@ use windows::{
     },
 };
 
-/// ウィンドウ作成時の設定をまとめた構造体だよ！
-/// Default トレイトを実装して, 最小限の指定で済むようにするよ。
+/// `CreateWindowExW` に渡すオプション。
+///
+/// `Default` では位置とサイズに `CW_USEDEFAULT` を指定する。
 pub struct WindowOptions {
     pub x: i32,
     pub y: i32,
@@ -33,7 +34,7 @@ impl Default for WindowOptions {
     }
 }
 
-/// ウィンドウを作成して, そのハンドル (HWND) を返すよ！
+/// ウィンドウを作成し、そのハンドルを返す。
 pub fn create_window(
     instance: HINSTANCE,
     class_name: PCWSTR,

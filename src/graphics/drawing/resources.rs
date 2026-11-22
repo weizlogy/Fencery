@@ -9,8 +9,9 @@ use windows::Win32::Graphics::{
 use windows::Win32::UI::WindowsAndMessaging::HICON;
 use crate::graphics::api::wic;
 
-/// 描画リソース (ブラシやテキストフォーマット, ビットマップ) を管理するよ！
-/// リソースの生成とキャッシュに責任を持つよ。
+/// 描画リソース（ブラシ・テキストフォーマット・ビットマップ）を管理する。
+///
+/// 生成とキャッシュを担当する。
 pub struct DrawingResources {
     brushes: HashMap<String, ID2D1SolidColorBrush>,
     bitmaps: HashMap<usize, ID2D1Bitmap>,
@@ -23,7 +24,7 @@ pub struct DrawingResources {
 }
 
 impl DrawingResources {
-    /// エンジンが保持するファクトリを受け取って初期化するよ。
+    /// エンジンが保持するファクトリを受け取って初期化する。
     pub fn new(dwrite_factory: IDWriteFactory1, wic_factory: IWICImagingFactory) -> Self {
         Self {
             brushes: HashMap::new(),
@@ -36,8 +37,8 @@ impl DrawingResources {
             current_font_size: 0.0,
         }
     }
-// ... (中略)
-    /// ヘルプ用のテキストフォーマットを取得するよ (折り返しあり)
+
+    /// 折り返しを有効にしたヘルプ用のテキストフォーマットを取得する。
     pub fn get_help_text_format(&mut self, font_family: &str, font_size: f32) -> Result<IDWriteTextFormat, windows::core::Error> {
         if let Some(format) = &self.help_text_format {
             if self.current_font_family == font_family && self.current_font_size == font_size {
@@ -56,10 +57,10 @@ impl DrawingResources {
                 font_size,
                 windows::core::w!("ja-jp"),
             )?;
-            // ヘルプ用なので左寄せ・上寄せ
+            // 長文表示のため左寄せ・上寄せとする。
             f.SetTextAlignment(windows::Win32::Graphics::DirectWrite::DWRITE_TEXT_ALIGNMENT_LEADING)?;
             f.SetParagraphAlignment(windows::Win32::Graphics::DirectWrite::DWRITE_PARAGRAPH_ALIGNMENT_NEAR)?;
-            // 折り返しを有効にする
+            // 折り返しを有効にする。
             f.SetWordWrapping(windows::Win32::Graphics::DirectWrite::DWRITE_WORD_WRAPPING_WRAP)?;
             f
         };
@@ -68,7 +69,7 @@ impl DrawingResources {
         Ok(format)
     }
 
-    /// 指定されたカラーコードからブラシを取得するよ。
+    /// カラーコードからブラシを取得する。
     pub fn get_brush(
         &mut self,
         context: &ID2D1DeviceContext,
@@ -88,16 +89,16 @@ impl DrawingResources {
         Ok(brush)
     }
 
-    /// デフォルトのテキストフォーマットを取得するよ。
+    /// 通常表示用のテキストフォーマットを取得する。
     pub fn get_text_format(&mut self, font_family: &str, font_size: f32) -> Result<IDWriteTextFormat, windows::core::Error> {
-        // フォント情報が変わっていない場合はキャッシュを返すよ
+        // フォント情報が同一ならキャッシュを返す。
         if let Some(format) = &self.text_format {
             if self.current_font_family == font_family && self.current_font_size == font_size {
                 return Ok(format.clone());
             }
         }
 
-        // フォント情報を更新して新しく作成するよ
+        // 変更された場合は新しいフォーマットを生成する。
         let family_wide = crate::win32::api::utils::to_wide(font_family);
         let format: IDWriteTextFormat = unsafe {
             let f = self.dwrite_factory.CreateTextFormat(
@@ -112,7 +113,7 @@ impl DrawingResources {
             f.SetTextAlignment(windows::Win32::Graphics::DirectWrite::DWRITE_TEXT_ALIGNMENT_CENTER)?;
             f.SetParagraphAlignment(windows::Win32::Graphics::DirectWrite::DWRITE_PARAGRAPH_ALIGNMENT_CENTER)?;
 
-            // 1行に収めるための設定 (WordWrap を無効にし, Trimming を有効にする)
+            // 1 行に収めるため折り返しを無効化し、末尾を省略する。
             f.SetWordWrapping(windows::Win32::Graphics::DirectWrite::DWRITE_WORD_WRAPPING_NO_WRAP)?;
 
             let trimming = windows::Win32::Graphics::DirectWrite::DWRITE_TRIMMING {
@@ -132,7 +133,7 @@ impl DrawingResources {
         Ok(format)
     }
 
-    /// HICON から ID2D1Bitmap を取得 (キャッシュ付き)
+    /// HICON からビットマップを取得する（キャッシュ付き）。
     pub fn get_icon_bitmap(
         &mut self,
         context: &ID2D1DeviceContext,
@@ -149,7 +150,7 @@ impl DrawingResources {
     }
 }
 
-/// "#RRGGBBAA" または "#RRGGBB" 形式の文字列を D2D1_COLOR_F に変換するよ
+/// `#RRGGBBAA` または `#RRGGBB` を `D2D1_COLOR_F` へ変換する。
 fn parse_hex_to_d2d_color(hex: &str) -> D2D1_COLOR_F {
     let hex = hex.trim_start_matches('#');
     if hex.len() < 6 {

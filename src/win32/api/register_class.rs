@@ -9,7 +9,7 @@ use windows::{
     },
 };
 
-/// ウィンドウクラスを登録するよ！
+/// ウィンドウクラスを登録する。同一クラスの再登録は成功とみなす。
 pub fn register_window_class(
     instance: HINSTANCE,
     class_name: PCWSTR,
@@ -18,7 +18,7 @@ pub fn register_window_class(
     unsafe {
         let wc = WNDCLASSEXW {
             cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
-            style: CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, // CS_DBLCLKS を追加！
+            style: CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, // ダブルクリックを WM_LBUTTONDBLCLK として受け取る。
             lpfnWndProc: wnd_proc,
             hInstance: instance,
             hCursor: LoadCursorW(None, IDC_ARROW)?,
@@ -29,7 +29,7 @@ pub fn register_window_class(
 
         if RegisterClassExW(&wc) == 0 {
             let err = windows::core::Error::from_win32();
-            // すでに登録されている場合はエラーにしないよ
+            // 同一プロセス内での再登録は許容する。
             if err.code() != ERROR_CLASS_ALREADY_EXISTS.to_hresult() {
                 return Err(err);
             }

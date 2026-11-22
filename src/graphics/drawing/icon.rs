@@ -1,7 +1,7 @@
 use windows::Win32::Graphics::Direct2D::{ID2D1DeviceContext, ID2D1Bitmap};
 use windows::Win32::Graphics::Direct2D::Common::D2D_RECT_F;
 
-/// アイコン (ビットマップ) を描画するよ！
+/// ビットマップをアイコンとして描画する。
 pub fn draw_icon(
     context: &ID2D1DeviceContext,
     bitmap: &ID2D1Bitmap,
@@ -14,7 +14,7 @@ pub fn draw_icon(
             Some(rect),
             opacity,
             windows::Win32::Graphics::Direct2D::D2D1_BITMAP_INTERPOLATION_MODE_LINEAR,
-            None, // 描画範囲全体 (Source Rect)
+            None, // ソース矩形を指定しない場合は全体を使用する。
         );
     }
 }

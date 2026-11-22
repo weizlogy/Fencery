@@ -14,9 +14,9 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WS_POPUP, WS_VISIBLE, WS_EX_ACCEPTFILES, SetTimer, KillTimer,
 };
 
-// タイマー ID の定義
+/// 実行直後のハイライトを解除するタイマーの ID。
 const IDT_EXECUTE_FLASH: usize = 1;
-/// グループウィンドウを統括するコンポーネントだよ！
+/// グループウィンドウの状態と操作を統括する。
 #[repr(C)]
 pub struct GroupWindow {
     pub window_type: crate::ui::WindowType,
@@ -27,7 +27,7 @@ pub struct GroupWindow {
 }
 
 impl GroupWindow {
-    /// 新しいグループウィンドウを作成して, 初期化するよ！
+    /// 設定からグループウィンドウを生成する。
     pub fn create(
         engine: Rc<GraphicsEngine>,
         id: String,
@@ -78,7 +78,7 @@ impl GroupWindow {
         api::show_window::move_to_bottom(hwnd);
 
         let icons = child.icons.iter().map(|i| i.path.clone()).collect();
-        // 子にフォント設定があればそれを優先、無ければ親の設定を使うよ。
+        // 子固有のフォント設定が未指定なら親の設定を継承する。
         let (font_size, font_family) = {
             let settings = manager::get_settings_reader();
             (
@@ -118,7 +118,7 @@ impl GroupWindow {
         Ok(window)
     }
 
-    /// 設定画面で保存された子設定を model に反映するよ。
+    /// 保存済みの子設定をモデルへ反映する。
     pub fn reload_from_settings(&mut self) {
         let settings = manager::get_settings_reader();
         if let Some(child) = settings.children.get(&self.model.id) {
@@ -192,7 +192,7 @@ impl GroupWindow {
         self.perform_action(action)
     }
 
-    /// タイマーが発火したときの処理だよ。
+    /// タイマー発火時に実行フラグを解除する。
     pub fn handle_timer(&mut self, timer_id: usize) -> Result<(), windows::core::Error> {
         if timer_id == IDT_EXECUTE_FLASH {
             self.model.executing_index = None;
@@ -251,14 +251,14 @@ impl GroupWindow {
                 if let Some(text_raw) = api::utils::get_clipboard_text() {
                     let text = text_raw.trim().to_lowercase();
 
-                    // 1. アイコンサイズ指定の解析 (例: size:64)
+                    // アイコンサイズ指定（例: size:64）を解析する。
                     if text.starts_with("size:") {
                         if let Ok(size) = text["size:".len()..].parse::<f32>() {
                             return self.perform_action(InteractionAction::ChangeIconSize { size });
                         }
                     }
 
-                    // 2. 背景色指定の解析 (#RRGGBB, #random)
+                    // 背景色指定（#RRGGBB, #random）を解析する。
                     let mut hex = text_raw.trim().to_string();
                     if hex.to_lowercase() == "#random" {
                         use rand::Rng;
@@ -288,11 +288,10 @@ impl GroupWindow {
                 self.draw()?;
             }
             InteractionAction::ExecuteIcon { index } => {
-                // 先にパスだけを取得して, self への借用を終わらせるよ
+                // 先にパスを取得してモデルへの可変借用を避ける。
                 let maybe_path = self.model.icons.get(index).map(|i| i.path.clone());
 
                 if let Some(path) = maybe_path {
-                    // ここからは &mut self を自由に使えるよ
                     self.model.executing_index = Some(index);
                     self.draw()?;
 
@@ -340,7 +339,7 @@ impl GroupWindow {
                 manager::save();
                 unsafe {
                     windows::Win32::UI::WindowsAndMessaging::PostMessageW(
-                        windows::Win32::Foundation::HWND(0), // スレッドメッセージとして送信
+                        windows::Win32::Foundation::HWND(0), // スレッドメッセージとして送信する。
                         api::WM_REMOVE_WINDOW,
                         windows::Win32::Foundation::WPARAM(self.hwnd.0 as usize),
                         windows::Win32::Foundation::LPARAM(0),

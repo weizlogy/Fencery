@@ -38,15 +38,15 @@ pub struct ChildSettings {
     pub width: u32,
     pub height: u32,
     pub bg_color: String,
-    pub opacity: f32, // 0.0 ~ 1.0
-    pub icon_size: f32, // アイコンの論理サイズ (デフォルト 48.0)
+    pub opacity: f32, // 不透明度（0.0〜1.0）
+    pub icon_size: f32, // アイコンの論理サイズ（既定 48.0）
     pub icons: Vec<PersistentIconInfo>,
 
-    // --- マルチモニター・高DPI対応のための追加フィールド ---
+    // マルチモニター・高 DPI 対応のための追加フィールド。
     pub monitor_name: Option<String>,
     pub monitor_x: Option<i32>,
     pub monitor_y: Option<i32>,
-    pub dpi_scale: f32, // 保存時の DPI スケーリング倍率 (1.0 = 100%, 1.5 = 150% 等)
+    pub dpi_scale: f32, // 保存時の DPI 倍率（1.0 = 100%、1.5 = 150%）
 
     pub font_size: f32,
     pub font_family: String,
@@ -63,28 +63,27 @@ impl ChildSettings {
             self.bg_color = "#FFFFFF99".to_string();
         }
 
-        // font_size と font_family についてもバリデーション
-        // font_size: 0.0 (未設定) の場合は AppSettings の値を引き継ぐ
+        // font_size が 0.0（未設定）の場合は全体設定を継承する。
         if self.font_size == 0.0 {
             self.font_size = app_settings.font_size;
         } else {
             self.font_size = self.font_size.clamp(8.0, 72.0);
         }
 
-        // font_family: 空文字列 (未設定) の場合は AppSettings の値を引き継ぐ
+        // font_family が空（未設定）の場合は全体設定を継承する。
         if self.font_family.is_empty() {
             self.font_family = app_settings.font_family.clone();
         }
 
-        // 画面外に飛び出している場合の救済措置
+        // 保存位置が画面外の場合は既定位置へ戻す。
         unsafe {
             let vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
             let vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
             let vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
             let vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-            // ウィンドウの左上が画面外なら (100, 100) に戻す
-            // 厳密には「完全に外」かを判定すべきだが, 救済を優先するよ
+            // 左上が仮想画面外なら既定位置へ戻す。
+            // 完全に画面外であるかの厳密な判定より救済を優先する。
             if self.x < vx || self.x > vx + vw || self.y < vy || self.y > vy + vh {
                 log::warn!("Window position ({}, {}) is out of screen. Resetting to (100, 100).", self.x, self.y);
                 self.x = 100;
@@ -103,8 +102,9 @@ pub struct WindowPosition {
 }
 
 impl WindowPosition {
-    /// 保存座標が仮想画面の範囲内かを調べるよ。
-    /// モニター構成が変わった場合の最低限の救済に使う。
+    /// 保存座標が仮想画面内かを判定する。
+    ///
+    /// モニター構成変更時の最低限の救済に使用する。
     pub fn is_on_screen(&self) -> bool {
         unsafe {
             let vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
@@ -129,7 +129,7 @@ pub struct ExtraWindows {
 #[serde(default)]
 pub struct Settings {
     pub app: AppSettings,
-    pub children: HashMap<String, ChildSettings>, // キーは ID 文字列 (タイムスタンプ)
+    pub children: HashMap<String, ChildSettings>, // キーはタイムスタンプの ID 文字列。
     pub windows: ExtraWindows,
 }
 
@@ -142,7 +142,7 @@ impl Settings {
     }
 }
 
-// --- 各構造体のデフォルト値の実装 ---
+// 各構造体の既定値の実装。
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -155,7 +155,7 @@ impl Default for AppSettings {
 
 impl Default for ChildSettings {
     fn default() -> Self {
-        // AppSettingsのデフォルト値を参照して初期化
+        // 全体設定の既定値を継承して初期化する。
         let app_defaults = AppSettings::default();
         Self {
             x: 100,
@@ -169,7 +169,7 @@ impl Default for ChildSettings {
             monitor_name: None,
             monitor_x: None,
             monitor_y: None,
-            dpi_scale: 1.0, // デフォルトは 100%
+            dpi_scale: 1.0, // 既定は 100%。
             font_size: app_defaults.font_size,
             font_family: app_defaults.font_family,
         }

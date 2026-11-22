@@ -9,8 +9,9 @@ use windows::Win32::{
 };
 use crate::graphics::{api, GraphicsEngine};
 
-/// ウィンドウごとの描画領域（キャンバス）を管理するよ！
-/// バッファのオーバープロビジョニングにより, リサイズ時の負荷を軽減するよ。
+/// ウィンドウごとの描画領域を管理する。
+///
+/// バッファを予め大きめに確保し、リサイズ時の再確保を減らす。
 pub struct Canvas {
     engine: Rc<GraphicsEngine>,
     swap_chain: IDXGISwapChain1,
@@ -28,7 +29,7 @@ impl Canvas {
         width: u32,
         height: u32,
     ) -> Result<Self, windows::core::Error> {
-        // 初期サイズも少し大きめに確保しておくよ
+        // 初期サイズにも余裕を持たせる。
         let buffer_width = width + 200;
         let buffer_height = height + 200;
 
@@ -77,12 +78,12 @@ impl Canvas {
             return Ok(());
         }
 
-        // 現在のバッファに収まるなら, ResizeBuffers をスキップして高速化！
+        // 既存バッファに収まる場合は再確保をスキップする。
         if width <= self.buffer_width && height <= self.buffer_height {
             return Ok(());
         }
 
-        // 足りない場合は, 一回り大きく確保し直すよ
+        // 不足する場合は余裕を持たせて再確保する。
         let new_buffer_width = width + 300;
         let new_buffer_height = height + 300;
 
@@ -106,23 +107,23 @@ impl Canvas {
     pub fn begin_draw(&self) {
         unsafe {
             self.d2d_context.BeginDraw();
-            // バッファ全体をクリアするよ
+            // バッファ全体を透明でクリアする。
             self.d2d_context.Clear(None);
         }
     }
 
-    /// 描画を確定して画面に反映するよ。
-    /// sync_interval: 1 で VSync 同期, 0 で即座に反映。
+    /// 描画を確定して画面へ反映する。
+    ///
+    /// `sync_interval` が 1 なら VSync に同期し、0 なら即座に反映する。
     pub fn end_draw(&self, sync_interval: u32) -> Result<(), windows::core::Error> {
         unsafe {
-            // 1. Direct2D の描画完了
+            // Direct2D の描画を完了する。
             self.d2d_context.EndDraw(None, None)?;
 
-            // 2. スワップチェーンのバッファを入れ替え (画面更新)
-            // リサイズ追従性を優先する場合, sync_interval を 0 にしてね。
+            // スワップチェーンを表示する。追従性を優先する場合は sync_interval を 0 とする。
             self.swap_chain.Present(sync_interval, 0).ok()?;
 
-            // 3. DirectComposition の変更を確定
+            // DirectComposition の変更を確定する。
             self.engine.dcomp_device.Commit()?;
         }
         Ok(())

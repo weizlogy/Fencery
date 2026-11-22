@@ -1,19 +1,20 @@
 use std::path::PathBuf;
 
-/// グループウィンドウのデータを管理するよ！
-/// DirectX などの描画詳細には一切依存しないピュアなデータ層。
+/// グループウィンドウの状態を保持する。
+///
+/// 描画 API に依存しない純粋なデータ層。
 pub struct GroupModel {
     pub id: String,
     pub title: String,
     pub bg_color_hex: String,
-    pub opacity: f32, // 0.0 ~ 1.0
+    pub opacity: f32, // 不透明度（0.0〜1.0）
     pub icon_size: f32,
-    /// 子ウィンドウ固有のフォント設定。未設定なら親 (AppSettings) の値が入る。
+    /// 子ウィンドウ固有のフォント設定。未指定時は親の設定が入る。
     pub font_size: f32,
     pub font_family: String,
     pub icons: Vec<IconState>,
     pub hovered_index: Option<usize>,
-    pub executing_index: Option<usize>, // 一瞬だけ光らせるための状態
+    pub executing_index: Option<usize>, // 実行直後のハイライト表示に使用する。
 }
 
 #[derive(Clone)]

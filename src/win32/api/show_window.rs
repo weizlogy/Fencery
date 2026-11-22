@@ -6,7 +6,7 @@ use windows::Win32::{
     },
 };
 
-/// ウィンドウを表示して更新するよ！
+/// ウィンドウを表示し、即座に再描画する。
 pub fn show_window(hwnd: HWND) {
     unsafe {
         let _ = ShowWindow(hwnd, SW_SHOW);
@@ -14,7 +14,7 @@ pub fn show_window(hwnd: HWND) {
     }
 }
 
-/// ウィンドウを最背面に移動させるよ！
+/// ウィンドウを最背面へ移動する。
 pub fn move_to_bottom(hwnd: HWND) {
     unsafe {
         let _ = SetWindowPos(

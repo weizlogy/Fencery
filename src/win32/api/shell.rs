@@ -5,15 +5,16 @@ use windows::Win32::UI::WindowsAndMessaging::{HICON, SW_SHOWNORMAL};
 use crate::win32::api::utils::to_wide;
 use std::path::Path;
 
-/// ファイルパスから 48x48 (SHIL_EXTRALARGE) のアイコン (HICON) を取得するよ！
-/// 取得した HICON は呼び出し側で DestroyIcon する必要があることに注意してね。
+/// ファイルのアイコンをシステムイメージリストから取得する。
+///
+/// 返された `HICON` の所有権は呼び出し側に移る。不要になったら `DestroyIcon` で解放する。
 pub fn get_icon_for_path(path: &Path) -> Option<HICON> {
     let path_str = path.to_string_lossy();
     let wide_path = to_wide(&path_str);
 
     let mut shfi = SHFILEINFOW::default();
 
-    // 1. システムイメージリスト内のインデックスを取得する
+    // システムイメージリスト内のアイコンインデックスを取得する。
     let result = unsafe {
         SHGetFileInfoW(
             PCWSTR::from_raw(wide_path.as_ptr()),
@@ -28,9 +29,8 @@ pub fn get_icon_for_path(path: &Path) -> Option<HICON> {
         return None;
     }
 
-    // 2. 48x48 (SHIL_EXTRALARGE) のイメージリストを取得してアイコンを抽出する
+    // イメージリストからアイコンハンドルを抽出する。
     unsafe {
-        // IImageList インターフェースを取得
         if let Ok(image_list) = SHGetImageList::<IImageList>(SHIL_EXTRALARGE as i32) {
             if let Ok(hicon) = image_list.GetIcon(shfi.iIcon, 0) {
                 return Some(hicon);
@@ -41,7 +41,7 @@ pub fn get_icon_for_path(path: &Path) -> Option<HICON> {
     None
 }
 
-/// 指定されたパスのファイルを実行 (開く) するよ！
+/// 指定されたパスを関連付けられたアプリケーションで開く。
 pub fn execute_path(path: &Path) -> Result<(), windows::core::Error> {
     let wide_path = to_wide(&path.to_string_lossy());
     unsafe {
@@ -57,7 +57,7 @@ pub fn execute_path(path: &Path) -> Result<(), windows::core::Error> {
     Ok(())
 }
 
-/// 指定されたパスのファイルがある場所をエクスプローラーで表示 (選択状態に) するよ！
+/// エクスプローラーでファイルを選択状態にして表示する。
 pub fn open_file_location(path: &Path) -> Result<(), windows::core::Error> {
     let path_str = path.to_string_lossy();
     let arg = format!(r#"/select,"{}""#, path_str);

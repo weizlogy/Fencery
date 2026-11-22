@@ -56,7 +56,7 @@ impl HelpRenderer {
 
         background::draw_rounded_rect(context, &bg_rect, &bg_brush, Some(&border_brush), 1.5, 12.0);
 
-        // ヘルプテキストの描画
+        // ヘルプテキストを描画する。
         help::draw_help(context, width, height, text_color_hex, &mut self.resources)?;
 
         self.canvas.end_draw(1)?;

@@ -3,12 +3,15 @@
 use std::rc::Rc;
 use fencery::{graphics, logger, tray, win32, settings::manager};
 
+/// アプリケーションのエントリポイント。
+///
+/// コマンドライン引数を設定へ反映したのち、常駐用の基盤を初期化し、
+/// メッセージループへ移行する。
 fn main() -> Result<(), windows::core::Error> {
-    // 1. ロガーの初期化
     logger::init();
     log::info!("Fencery v3.0.0 (Native) Starting...");
 
-    // 2. 引数の解析と設定の更新
+    // コマンドライン引数は永続化された設定より優先する。
     let args: Vec<String> = std::env::args().collect();
     let mut i = 1;
     let mut settings_changed = false;
@@ -39,7 +42,7 @@ fn main() -> Result<(), windows::core::Error> {
         log::info!("Settings updated from command line arguments.");
     }
 
-    // 3. COM の初期化 (WIC や DirectComposition で必要)
+    // WIC と DirectComposition は COM の初期化を前提とする。
     unsafe {
         windows::Win32::System::Com::CoInitializeEx(
             None,
@@ -47,17 +50,15 @@ fn main() -> Result<(), windows::core::Error> {
         )?;
     }
 
-    // 3. グラフィックスエンジンの初期化 (全ウィンドウで共有)
+    // グラフィックス基盤は全ウィンドウで単一のインスタンスを共有する。
     let engine = Rc::new(graphics::GraphicsEngine::new()?);
 
-    // 3. メインウィンドウを作成 (非表示。常駐用)
+    // 非表示の常駐用ウィンドウ。メッセージの受け皿として機能する。
     let _window = win32::Window::new("FenceryClass", "Fencery Native")?;
 
-    // 4. トレイアイコンを作成
     let _tray = tray::tray_icon::create_tray();
     log::info!("Tray icon created. Running in background...");
 
-    // 5. メッセージループを開始 (エンジンを渡す)
     win32::run_message_loop(engine)?;
 
     log::info!("Application exiting.");

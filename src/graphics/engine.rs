@@ -7,8 +7,9 @@ use windows::Win32::Graphics::{
 };
 use crate::graphics::api;
 
-/// アプリケーション全体で共有されるグラフィックスの「心臓部」だよ！
-/// D3D/D2D デバイスや各ファクトリを保持するよ。
+/// アプリケーション全体で共有するグラフィックス基盤。
+///
+/// D3D/D2D デバイスと各ファクトリを保持する。
 pub struct GraphicsEngine {
     pub d3d_device: ID3D11Device,
     pub d3d_context: ID3D11DeviceContext,
@@ -20,7 +21,7 @@ pub struct GraphicsEngine {
 }
 
 impl GraphicsEngine {
-    /// グラフィックスエンジンを初期化するよ！
+    /// 各デバイスとファクトリを初期化する。
     pub fn new() -> Result<Self, windows::core::Error> {
         let (d3d_device, d3d_context) = api::d3d11::create_device()?;
         let dxgi_device = api::dxgi::get_dxgi_device(&d3d_device)?;

@@ -9,7 +9,7 @@ use windows::Win32::Graphics::{
     Dxgi::{Common::DXGI_FORMAT_B8G8R8A8_UNORM, IDXGIDevice, IDXGISurface},
 };
 
-/// Direct2D ファクトリを作成するよ！
+/// Direct2D ファクトリを作成する。
 pub fn create_factory() -> Result<ID2D1Factory1, windows::core::Error> {
     unsafe {
         let options = D2D1_FACTORY_OPTIONS {
@@ -19,7 +19,7 @@ pub fn create_factory() -> Result<ID2D1Factory1, windows::core::Error> {
     }
 }
 
-/// DXGI デバイスから Direct2D デバイスを作成するよ！
+/// DXGI デバイスから Direct2D デバイスを作成する。
 pub fn create_device(
     factory: &ID2D1Factory1,
     dxgi_device: &IDXGIDevice,
@@ -27,14 +27,14 @@ pub fn create_device(
     unsafe { factory.CreateDevice(dxgi_device) }
 }
 
-/// Direct2D デバイスから描画用のデバイスコンテキストを作成するよ！
+/// Direct2D デバイスから描画用のデバイスコンテキストを作成する。
 pub fn create_device_context(
     d2d_device: &ID2D1Device,
 ) -> Result<ID2D1DeviceContext, windows::core::Error> {
     unsafe { d2d_device.CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE) }
 }
 
-/// DXGI サーフェスから Direct2D ビットマップ（描画ターゲット）を作成するよ！
+/// DXGI サーフェスから描画ターゲット用のビットマップを作成する。
 pub fn create_bitmap_from_dxgi_surface(
     context: &ID2D1DeviceContext,
     surface: &IDXGISurface,

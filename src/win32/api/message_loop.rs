@@ -20,11 +20,12 @@ use crate::ui::group::interaction::InteractionAction;
 use crate::win32::vproc::window_proc;
 use crate::win32::api;
 
-/// マウスフックで受け取ったホイール量をメインループへ渡すよ。
-/// コールバックは設定ウィンドウを直接触れないので、差分だけを溜めておく。
+/// フックからメインループへ渡すホイール量の累積値。
+///
+/// コールバックはウィンドウへ直接アクセスできないため、差分のみを保持する。
 static PENDING_WHEEL: AtomicI32 = AtomicI32::new(0);
 
-/// 低レベルマウスフック。フォーカスに関係なくホイールを捕捉するよ。
+/// フォーカスに依存せずホイール入力を捕捉する低レベルフック。
 extern "system" fn mouse_hook_proc(
     code: i32,
     wparam: WPARAM,
@@ -33,7 +34,7 @@ extern "system" fn mouse_hook_proc(
     if code >= 0 && wparam.0 == WM_MOUSEWHEEL as usize {
         unsafe {
             let data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
-            // mouseData の上位 16bit がホイール量 (通常 ±120)
+            // mouseData の上位 16 ビットがホイール量（通常 ±120）。
             let delta = ((data.mouseData >> 16) & 0xFFFF) as i16;
             PENDING_WHEEL.fetch_add(delta as i32, Ordering::Relaxed);
         }
@@ -41,13 +42,13 @@ extern "system" fn mouse_hook_proc(
     unsafe { CallNextHookEx(HHOOK::default(), code, wparam, lparam) }
 }
 
-/// ウィンドウメッセージとトレイイベントを処理し続けるループだよ！
+/// ウィンドウメッセージとトレイ／メニューイベントを処理するメインループ。
 pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core::Error> {
     unsafe {
         let mut msg = MSG::default();
 
-        // 設定画面は WS_EX_NOACTIVATE でフォーカスを取れないから、
-        // 低レベルマウスフックでホイールを捕捉するよ。
+        // 設定ウィンドウは WS_EX_NOACTIVATE によりフォーカスを取得できないため、
+        // 低レベルフックでホイールを捕捉する。
         let mouse_hook = SetWindowsHookExW(
             WH_MOUSE_LL,
             Some(mouse_hook_proc),
@@ -58,7 +59,7 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
         let tray_channel = TrayIconEvent::receiver();
         let menu_channel = MenuEvent::receiver();
 
-        // 1. ウィンドウクラスを1回だけ登録する
+        // ウィンドウクラスはプロセスごとに一度だけ登録する。
         let instance = GetModuleHandleW(None)?;
         let class_name_str = "FenceryGroupClass";
         let class_name = api::utils::to_wide(class_name_str);
@@ -70,15 +71,15 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
             Some(window_proc),
         )?;
 
-        // 複数のグループウィンドウを管理する
+        // メッセージハンドラから参照できるよう Box で保持する。
         let mut windows: Vec<Box<GroupWindow>> = Vec::new();
         let mut help_window: Option<Box<HelpWindow>> = None;
         let mut settings_window: Option<Box<SettingsWindow>> = None;
 
-        // キーの状態管理
+        // キー押下の立ち上がりを検出するため前回の状態を保持する。
         let mut v_was_down = false;
 
-        // 起動時に設定から既存のグループを復元するよ
+        // 永続化されたグループを起動時に復元する。
         {
             let settings = manager::get_settings_reader();
             for (id, child) in &settings.children {
@@ -109,14 +110,14 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
         }
 
         loop {
-            // 1. Win32 メッセージを全て処理する
+            // 保留中の Win32 メッセージをすべて処理する。
             while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
                 if msg.message == windows::Win32::UI::WindowsAndMessaging::WM_QUIT {
                     let _ = UnhookWindowsHookEx(mouse_hook);
                     return Ok(());
                 }
 
-                // カスタムメッセージの処理: ウィンドウ削除通知
+                // 破棄されたウィンドウを管理対象から外す。
                 if msg.message == api::WM_REMOVE_WINDOW {
                     let target_hwnd = windows::Win32::Foundation::HWND(msg.wParam.0 as isize);
                     log::info!("Removing window from management list: {:?}", target_hwnd);
@@ -137,8 +138,8 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
                 DispatchMessageW(&msg);
             }
 
-            // マウスフックで溜めたホイール量を設定画面へ渡すよ。
-            // フォーカスがどこにあっても届くので、表示直後だけ効くという問題は起きない。
+            // 蓄積したホイール量を設定ウィンドウへ渡す。
+            // フォーカスに依存しないため、表示直後のみ有効になる問題を避けられる。
             let wheel_delta = PENDING_WHEEL.swap(0, Ordering::Relaxed);
             if wheel_delta != 0 {
                 if let Some(settings) = settings_window.as_mut() {
@@ -146,10 +147,10 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
                 }
             }
 
-            // 設定が保存されたら、フォントを使う既存ウィンドウを全部再描画するよ。
+            // 設定の変更を既存ウィンドウへ反映し、再描画する。
             if manager::take_redraw_request() {
                 for window in &mut windows {
-                    // 設定画面で変更した色・透過度・アイコンサイズを反映してから描画するよ。
+                    // 再描画の前に変更済みの外観設定を反映する。
                     window.reload_from_settings();
                     if let Err(e) = window.draw() {
                         log::error!("Group redraw error: {}", e);
@@ -167,17 +168,17 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
                 }
             }
 
-            // 2. トレイアイコンのイベントを処理する
+            // トレイアイコンのイベントを処理する。
             if let Ok(event) = tray_channel.try_recv() {
                 handle_tray_event(event);
             }
 
-            // 3. メニューのイベントを処理する
+            // メニューイベントを処理する。
             if let Ok(event) = menu_channel.try_recv() {
                 handle_menu_event(event, &engine, &mut windows, &mut help_window, &mut settings_window);
             }
 
-            // 4. キー入力を監視
+            // キー入力を監視する。
             let ctrl_down = (GetKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
             let v_is_down = (GetAsyncKeyState(0x56) as u16 & 0x8000) != 0;
 
@@ -195,7 +196,7 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
                             }
                         }
                     }
-                    // 設定画面はグループとは別に扱うよ (フォント名やサイズも貼り付けられる)。
+                    // 設定ウィンドウはフォント名・サイズも貼り付け対象とするため別扱いとする。
                     if !handled {
                         if let Some(settings) = settings_window.as_mut() {
                             let mut rect = RECT::default();
@@ -233,7 +234,7 @@ fn handle_menu_event(
     settings_window: &mut Option<Box<SettingsWindow>>
 ) {
     match event.id.0.as_str() {
-        "1001" => { // New Group
+        "1001" => { // 新しいグループを作成する。
             let id = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis().to_string();
             let title = "New Group".to_string();
             let bg_color = "#000000".to_string();
@@ -260,7 +261,7 @@ fn handle_menu_event(
                 Err(e) => log::error!("Failed to create group window: {}", e),
             }
         }
-        "1003" => { // Help
+        "1003" => { // ヘルプウィンドウを開く。
             if help_window.is_none() {
                 let initial = {
                     let settings = manager::get_settings_reader();
@@ -281,14 +282,14 @@ fn handle_menu_event(
                 log::info!("Help window is already open.");
             }
         }
-        "1004" => { // Open Settings Location
+        "1004" => { // 設定ファイルの場所を開く。
             if let Ok(path) = crate::settings::storage::get_config_path() {
                 if let Some(parent) = path.parent() {
                     let _ = api::shell::open_file_location(parent);
                 }
             }
         }
-        "1005" => { // Settings GUI
+        "1005" => { // 設定 GUI を開く。
             if settings_window.is_none() {
                 let initial = {
                     let settings = manager::get_settings_reader();
@@ -309,7 +310,7 @@ fn handle_menu_event(
                 log::info!("Settings window is already open.");
             }
         }
-        "1002" => { // Quit
+        "1002" => { // アプリケーションを終了する。
             unsafe {
                 windows::Win32::UI::WindowsAndMessaging::PostQuitMessage(0);
             }

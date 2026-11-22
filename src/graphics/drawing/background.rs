@@ -2,8 +2,9 @@ use windows::Win32::Graphics::Direct2D::{
     ID2D1DeviceContext, D2D1_ROUNDED_RECT, ID2D1SolidColorBrush,
 };
 
-/// 矩形の背景と枠線を描画するよ！
-/// 描画に必要なリソースは外部 (Resources) から提供される前提だよ。
+/// 角丸矩形の背景と枠線を描画する。
+///
+/// ブラシは呼び出し側で用意し、引数として渡す。
 pub fn draw_rounded_rect(
     context: &ID2D1DeviceContext,
     rect: &windows::Win32::Graphics::Direct2D::Common::D2D_RECT_F,
@@ -19,10 +20,10 @@ pub fn draw_rounded_rect(
     };
 
     unsafe {
-        // 背景を塗りつぶす
+        // 背景を塗りつぶす。
         context.FillRoundedRectangle(&rounded_rect, fill_brush);
 
-        // 枠線を描画する
+        // 枠線を描画する。
         if let Some(brush) = border_brush {
             if border_width > 0.0 {
                 context.DrawRoundedRectangle(&rounded_rect, brush, border_width, None);

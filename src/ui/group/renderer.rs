@@ -4,7 +4,7 @@ use crate::graphics::{Canvas, GraphicsEngine, drawing::resources::DrawingResourc
 use crate::graphics::drawing::painter;
 use crate::ui::group::model::GroupModel;
 
-/// グループウィンドウの描画を管理するよ！
+/// グループウィンドウの描画を管理する。
 pub struct GroupRenderer {
     canvas: Canvas,
     resources: DrawingResources,
@@ -25,8 +25,7 @@ impl GroupRenderer {
 
         let renderer = Self { canvas, resources };
 
-        // テキストの描画品質を向上させるよ！
-        // 透過ウィンドウでは GRAYSCALE が最も綺麗に馴染むんだ。
+        // 透過ウィンドウでは GRAYSCALE が最も自然に馴染む。
         unsafe {
             renderer.canvas.d2d_context.SetTextAntialiasMode(windows::Win32::Graphics::Direct2D::D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
         }
@@ -34,7 +33,7 @@ impl GroupRenderer {
         Ok(renderer)
     }
 
-    /// グループを描画するよ。
+    /// グループを描画する。
     pub fn render(
         &mut self,
         model: &GroupModel,
@@ -44,7 +43,6 @@ impl GroupRenderer {
     ) -> Result<(), windows::core::Error> {
         self.canvas.begin_draw();
 
-        // painter に描画を依頼するよ。
         painter::draw_group(
             &self.canvas.d2d_context,
             width,
@@ -53,14 +51,13 @@ impl GroupRenderer {
             &mut self.resources,
         )?;
 
-        // リサイズ中は VSync を待たずに即座に描画を反映させることで, 
-        // マウスカーソルへの追従性を極限まで高めるよ！
+        // リサイズ中は VSync を待たず、カーソルへの追従を優先する。
         let sync_interval = if is_resizing { 0 } else { 1 };
         self.canvas.end_draw(sync_interval)?;
         Ok(())
     }
 
-    /// ウィンドウサイズが変わったときに呼び出してね。
+    /// ウィンドウサイズの変更を描画基盤へ反映する。
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), windows::core::Error> {
         self.canvas.resize(width, height)
     }

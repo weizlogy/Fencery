@@ -10,14 +10,14 @@ use windows::{
 
 use super::vproc::window_proc;
 
-/// ウィンドウの状態を管理する構造体だよ！
+/// ウィンドウハンドルと描画サーフェスを保持する。
 pub struct Window {
     pub hwnd: HWND,
-    pub canvas: Option<Canvas>, // DirectX 描画用 (Option にして初期化を遅延させるよ)
+    pub canvas: Option<Canvas>, // 描画開始まで初期化を遅延する。
 }
 
 impl Window {
-    /// 新しくウィンドウを作成して初期化するよ！ (汎用)
+    /// ウィンドウクラスを登録し、新しいウィンドウを作成する。
     pub fn new(class_name_str: &str, window_name_str: &str) -> Result<Self, windows::core::Error> {
         let instance = unsafe { GetModuleHandleW(None)? };
         let class_name = api::utils::to_wide(class_name_str);
@@ -41,12 +41,12 @@ impl Window {
         Ok(Self { hwnd, canvas: None })
     }
 
-    /// ウィンドウを表示するよ！
+    /// ウィンドウを表示し、即座に再描画する。
     pub fn show(&self) {
         api::show_window::show_window(self.hwnd);
     }
 
-    /// 最背面であることを再確認（必要に応じて呼び出す）
+    /// ウィンドウを最背面へ移動する。
     pub fn keep_bottom(&self) {
         api::show_window::move_to_bottom(self.hwnd);
     }

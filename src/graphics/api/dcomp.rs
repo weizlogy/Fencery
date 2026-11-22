@@ -7,14 +7,14 @@ use windows::Win32::{
     Graphics::Dxgi::IDXGIDevice,
 };
 
-/// DXGI デバイスから DirectComposition デバイスを作成するよ！
+/// DXGI デバイスから DirectComposition デバイスを作成する。
 pub fn create_device(dxgi_device: &IDXGIDevice) -> Result<IDCompositionDevice, windows::core::Error> {
     unsafe {
         windows::Win32::Graphics::DirectComposition::DCompositionCreateDevice(dxgi_device)
     }
 }
 
-/// ウィンドウに対してコンポジションターゲットを作成するよ！
+/// ウィンドウに対してコンポジションターゲットを作成する。
 pub fn create_target_for_hwnd(
     dcomp_device: &IDCompositionDevice,
     hwnd: HWND,
@@ -25,7 +25,7 @@ pub fn create_target_for_hwnd(
     }
 }
 
-/// ビジュアル（描画レイヤー）を作成するよ！
+/// 描画レイヤーとなるビジュアルを作成する。
 pub fn create_visual(
     dcomp_device: &IDCompositionDevice,
 ) -> Result<IDCompositionVisual, windows::core::Error> {

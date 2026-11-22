@@ -3,7 +3,7 @@ use crate::settings::{AppSettings, ChildSettings, Settings};
 pub const WINDOW_WIDTH: f32 = 450.0;
 pub const WINDOW_HEIGHT: f32 = 600.0;
 
-/// クリック判定用の矩形。描画とヒットテストで同じ値を使うよ。
+/// 描画とヒットテストで共有する矩形。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiRect {
     pub x: f32,
@@ -22,7 +22,7 @@ impl UiRect {
     }
 }
 
-/// マウスが乗っている／押されている UI 要素だよ。
+/// ホバー・押下状態にある UI 要素。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HoverTarget {
     PagePrev,
@@ -53,8 +53,9 @@ pub enum NumericField {
     ChildIconSize,
 }
 
-/// 固定レイアウト。ウィンドウはリサイズできないので定数で持つよ。
-/// フォント周りの座標はメイン・子で共通、下の追項目だけ子ページ専用だよ。
+/// 固定レイアウト。ウィンドウはリサイズ不可のため定数で定義する。
+///
+/// フォント周りの座標はメイン・子で共通とし、下段の項目のみ子ページ専用とする。
 #[derive(Clone, Copy)]
 pub struct SettingsLayout {
     pub nav_prev: UiRect,
@@ -95,7 +96,7 @@ pub struct ChildDraft {
     pub original: ChildSettings,
 }
 
-/// 設定画面のピュアなデータ層。DirectX には一切依存しないよ。
+/// 設定画面のデータ層。描画 API に依存しない。
 pub struct SettingsModel {
     /// 編集中の全体設定。保存ボタンが押されるまでグローバル設定には反映しない。
     pub draft: AppSettings,
@@ -103,7 +104,7 @@ pub struct SettingsModel {
     pub original: AppSettings,
     /// 子ウィンドウの編集状態。ID 順にソートしてある。
     pub children: Vec<ChildDraft>,
-    /// 0 = メイン、1.. = children[page - 1]。
+    /// 0 はメインページ、1 以降は `children[page - 1]`。
     pub page: usize,
     /// DirectWrite から列挙したインストール済みフォント。
     pub font_families: Vec<String>,
@@ -130,7 +131,7 @@ impl SettingsModel {
                 original: child.clone(),
             })
             .collect();
-        // HashMap の順番は不定なので、ID 順に並べてページを安定させるよ。
+        // ページ順序を安定させるため、HashMap の順序に依存せず ID 順に並べる。
         children.sort_by(|a, b| a.id.cmp(&b.id));
 
         let mut model = Self {
@@ -165,7 +166,7 @@ impl SettingsModel {
         self.children.get_mut(index)
     }
 
-    /// ページを切り替えたら、ドラッグやホバーの状態をリセットするよ。
+    /// ページ切替時にドラッグ・ホバー状態を破棄する。
     pub fn set_page(&mut self, page: usize) {
         self.page = page.min(self.page_count() - 1);
         self.hovered = None;
@@ -351,9 +352,9 @@ impl SettingsModel {
         }
     }
 
-    /// 座標から UI 要素を特定するよ。小さいボタンから順に判定する。
+    /// 座標から UI 要素を特定する。小さい要素から順に判定する。
     pub fn hit_test(&self, x: f32, y: f32) -> Option<HoverTarget> {
-        // ページナビとフッターはどのページでも共通。
+        // ページナビとフッターは全ページ共通。
         if LAYOUT.nav_prev.contains(x, y) {
             return Some(HoverTarget::PagePrev);
         }
@@ -407,7 +408,7 @@ impl SettingsModel {
         self.notice = Some("元に戻しました".to_string());
     }
 
-    /// 保存前に Models 側のバリデーションを適用する。
+    /// 保存前にモデル層のバリデーションを適用する。
     pub fn validate_draft(&mut self) {
         self.draft.validate();
         for child in &mut self.children {
@@ -418,7 +419,7 @@ impl SettingsModel {
     }
 }
 
-// ── 小さなヘルパー ────────────────────────────────
+// ── ヘルパー ───────────────────────────────────────
 
 fn font_size_from_x(x: f32, r: &UiRect) -> f32 {
     let t = ((x - r.x) / r.w).clamp(0.0, 1.0);
@@ -475,14 +476,24 @@ mod tests {
         SettingsModel::new(&settings, families)
     }
 
+    // レイアウト調整に追従するため、座標は LAYOUT から導出する。
+    fn center(r: UiRect) -> (f32, f32) {
+        (r.x + r.w / 2.0, r.y + r.h / 2.0)
+    }
+
     #[test]
     fn hit_test_finds_buttons_and_list() {
         let m = model();
-        assert_eq!(m.hit_test(35.0, 22.0), Some(HoverTarget::PagePrev));
-        assert_eq!(m.hit_test(116.0, 22.0), Some(HoverTarget::PageNext));
-        assert_eq!(m.hit_test(380.0, 116.0), Some(HoverTarget::FontMinus));
-        assert_eq!(m.hit_test(270.0, 520.0), Some(HoverTarget::Save));
-        assert_eq!(m.hit_test(100.0, 220.0), Some(HoverTarget::FontList));
+        let (x, y) = center(LAYOUT.nav_prev);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::PagePrev));
+        let (x, y) = center(LAYOUT.nav_next);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::PageNext));
+        let (x, y) = center(LAYOUT.font_minus);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::FontMinus));
+        let (x, y) = center(LAYOUT.save_button);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::Save));
+        let (x, y) = center(LAYOUT.font_list);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::FontList));
         assert_eq!(m.hit_test(5.0, 5.0), None);
     }
 
@@ -541,7 +552,7 @@ mod tests {
         assert_eq!(child.icon_size, 56.0);
         assert!(m.is_dirty());
 
-        assert_eq!(m.draft.font_family, "Meiryo"); // メインは変更されない
+        assert_eq!(m.draft.font_family, "Meiryo"); // メインページの設定は変更されない。
 
         m.reset();
         assert!(!m.is_dirty());
@@ -551,13 +562,19 @@ mod tests {
     #[test]
     fn child_hit_test_switches_with_page() {
         let m = model();
-        assert_eq!(m.hit_test(150.0, 85.0), None); // 子の色はメインでは判定しない
+        let (x, y) = center(LAYOUT.child_bg_color);
+        assert_eq!(m.hit_test(x, y), None); // 子ページ専用要素はメインでは判定しない。
+
         let mut m = m;
         m.next_page();
-        assert_eq!(m.hit_test(380.0, 116.0), Some(HoverTarget::ChildFontMinus));
-        assert_eq!(m.hit_test(150.0, 420.0), Some(HoverTarget::ChildBgColor));
-        assert_eq!(m.hit_test(150.0, 450.0), Some(HoverTarget::ChildOpacitySlider));
-        assert_eq!(m.hit_test(150.0, 480.0), Some(HoverTarget::ChildIconSizeSlider));
+        let (x, y) = center(LAYOUT.font_minus);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::ChildFontMinus));
+        let (x, y) = center(LAYOUT.child_bg_color);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::ChildBgColor));
+        let (x, y) = center(LAYOUT.child_opacity_slider);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::ChildOpacitySlider));
+        let (x, y) = center(LAYOUT.child_icon_size_slider);
+        assert_eq!(m.hit_test(x, y), Some(HoverTarget::ChildIconSizeSlider));
     }
 
     #[test]
