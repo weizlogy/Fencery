@@ -144,7 +144,7 @@ fn draw_font_section(
             if is_hovered { selected_text_brush } else { text_brush },
             label,
             r.x + 7.0,
-            r.y + 1.0,
+            r.y + 2.0,
             r.w,
         )?;
     }
@@ -158,13 +158,13 @@ fn draw_font_section(
         context,
         preview_format,
         text_brush,
-        "Aa あいう 123",
+        "The quick brown fox jumps over the lazy dog.",
         left + 8.0,
-        137.0,
+        142.0,
         content_width - 16.0,
     )?;
 
-    draw_line(factory, context, ui_format, text_brush, "ファミリ", left, 180.0, content_width)?;
+    draw_line(factory, context, ui_format, text_brush, "ファミリー", left, 180.0, content_width)?;
     fill_rect(context, LAYOUT.font_list, panel_brush);
     stroke_rect(context, LAYOUT.font_list, border_brush, 1.0);
 
@@ -229,13 +229,14 @@ pub fn draw_settings(
     let muted_hex = if is_dark { "#FFFFFF99" } else { "#00000099" };
     let panel_hex = if is_dark { "#FFFFFF18" } else { "#00000018" };
     let border_hex = if is_dark { "#FFFFFF44" } else { "#00000044" };
+    let selected_text_hex = if is_dark { "#000000" } else { "#FFFFFF" };
 
     let text_brush = &resources.get_brush(context, text_color_hex)?;
     let muted_brush = &resources.get_brush(context, muted_hex)?;
     let panel_brush = &resources.get_brush(context, panel_hex)?;
     let border_brush = &resources.get_brush(context, border_hex)?;
-    let accent_brush = &resources.get_brush(context, "#4A90E2")?;
-    let selected_text_brush = &resources.get_brush(context, "#FFFFFF")?;
+    let accent_brush = text_brush;
+    let selected_text_brush = &resources.get_brush(context, selected_text_hex)?;
 
     let child_bg_hex = model
         .current_child()
@@ -268,8 +269,8 @@ pub fn draw_settings(
             &ui_format,
             if is_hovered { selected_text_brush } else { text_brush },
             label,
-            r.x + 5.0,
-            r.y + 1.0,
+            r.x + 8.0,
+            r.y + 2.0,
             r.w,
         )?;
     }
@@ -279,7 +280,7 @@ pub fn draw_settings(
         &ui_format,
         text_brush,
         &format!("{} / {}", model.page + 1, model.page_count()),
-        50.0,
+        60.0,
         13.0,
         54.0,
     )?;
@@ -288,7 +289,7 @@ pub fn draw_settings(
         context,
         &title_format,
         accent_brush,
-        "Fencery Settings",
+        "Settings",
         140.0,
         12.0,
         content_width - 116.0,
@@ -355,7 +356,7 @@ pub fn draw_settings(
             muted_brush,
             "Ctrl+ドラッグ: 移動 / Ctrl+右クリック: 閉じる",
             left,
-            444.0,
+            500.0,
             content_width,
         )?;
         draw_line(
@@ -365,7 +366,7 @@ pub fn draw_settings(
             muted_brush,
             "ホイール: 調整 / Shift: 粗調整 / Ctrl+V: 貼り付け",
             left,
-            464.0,
+            520.0,
             content_width,
         )?;
     } else if let Some(child) = model.current_child() {
@@ -493,9 +494,9 @@ pub fn draw_settings(
             context,
             &ui_format,
             muted_brush,
-            "ホイール: 調整 / Shift: 粗調整 / Ctrl+V: 色・サイズ",
+            "ホイール: 調整 / Shift: 粗調整 / Ctrl+V: 色",
             left,
-            494.0,
+            520.0,
             content_width,
         )?;
     }
@@ -514,8 +515,8 @@ pub fn draw_settings(
         &ui_format,
         if save_hovered { selected_text_brush } else { text_brush },
         "保存",
-        LAYOUT.save_button.x + 30.0,
-        LAYOUT.save_button.y + 2.0,
+        LAYOUT.save_button.x + 32.0,
+        LAYOUT.save_button.y + 4.0,
         LAYOUT.save_button.w,
     )?;
 
@@ -532,8 +533,8 @@ pub fn draw_settings(
         &ui_format,
         if reset_hovered { selected_text_brush } else { text_brush },
         "元に戻す",
-        LAYOUT.reset_button.x + 16.0,
-        LAYOUT.reset_button.y + 2.0,
+        LAYOUT.reset_button.x + 18.0,
+        LAYOUT.reset_button.y + 4.0,
         LAYOUT.reset_button.w,
     )?;
 
@@ -545,7 +546,7 @@ pub fn draw_settings(
             accent_brush,
             notice,
             left,
-            550.0,
+            555.0,
             content_width,
         )?;
     }

@@ -261,7 +261,7 @@ impl SettingsWindow {
         let target = self.model.hit_test(x, y);
 
         let is_shift = unsafe { (GetKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0 };
-        let dir = if delta > 0 { 1 } else { -1 };
+        let dir = if delta > 0 { -1 } else { 1 };
         let rows = if is_shift { 5 } else { 1 };
 
         match target {
