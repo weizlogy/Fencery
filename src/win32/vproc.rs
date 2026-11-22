@@ -52,7 +52,7 @@ pub unsafe extern "system" fn window_proc(
     }
 }
 
-unsafe fn handle_group_msg(
+fn handle_group_msg(
     window: &mut GroupWindow,
     hwnd: HWND,
     msg: u32,
@@ -63,7 +63,7 @@ unsafe fn handle_group_msg(
         WM_NCHITTEST => {
             return LRESULT(HTCLIENT as isize);
         }
-        WM_WINDOWPOSCHANGING => {
+        WM_WINDOWPOSCHANGING => unsafe {
             let window_pos = &mut *(lparam.0 as *mut WINDOWPOS);
             window_pos.hwndInsertAfter = HWND_BOTTOM;
             return LRESULT(0);
@@ -77,7 +77,7 @@ unsafe fn handle_group_msg(
             }
             return LRESULT(0);
         }
-        WM_PAINT => {
+        WM_PAINT => unsafe {
             let mut ps = PAINTSTRUCT::default();
             BeginPaint(hwnd, &mut ps);
             if let Err(e) = window.draw() {
@@ -142,7 +142,7 @@ unsafe fn handle_group_msg(
             if let Err(e) = window.handle_drop_files(files) {
                 log::error!("Drop files error: {}", e);
             }
-            DragFinish(hdrop);
+            unsafe { DragFinish(hdrop); }
             return LRESULT(0);
         }
         WM_ERASEBKGND => {
@@ -153,10 +153,10 @@ unsafe fn handle_group_msg(
         }
         _ => {}
     }
-    DefWindowProcW(hwnd, msg, wparam, lparam)
+    unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
 }
 
-unsafe fn handle_help_msg(
+fn handle_help_msg(
     window: &mut HelpWindow,
     hwnd: HWND,
     msg: u32,
@@ -167,7 +167,7 @@ unsafe fn handle_help_msg(
         WM_NCHITTEST => {
             return LRESULT(HTCLIENT as isize);
         }
-        WM_WINDOWPOSCHANGING => {
+        WM_WINDOWPOSCHANGING => unsafe {
             let window_pos = &mut *(lparam.0 as *mut WINDOWPOS);
             window_pos.hwndInsertAfter = HWND_BOTTOM;
             return LRESULT(0);
@@ -175,7 +175,7 @@ unsafe fn handle_help_msg(
         WM_MOUSEACTIVATE => {
             return LRESULT(MA_NOACTIVATE as isize);
         }
-        WM_PAINT => {
+        WM_PAINT => unsafe {
             let mut ps = PAINTSTRUCT::default();
             BeginPaint(hwnd, &mut ps);
             if let Err(e) = window.draw() {
@@ -222,10 +222,10 @@ unsafe fn handle_help_msg(
         }
         _ => {}
     }
-    DefWindowProcW(hwnd, msg, wparam, lparam)
+    unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
 }
 
-unsafe fn handle_settings_msg(
+fn handle_settings_msg(
     window: &mut SettingsWindow,
     hwnd: HWND,
     msg: u32,
@@ -236,7 +236,7 @@ unsafe fn handle_settings_msg(
         WM_NCHITTEST => {
             return LRESULT(HTCLIENT as isize);
         }
-        WM_WINDOWPOSCHANGING => {
+        WM_WINDOWPOSCHANGING => unsafe {
             let window_pos = &mut *(lparam.0 as *mut WINDOWPOS);
             window_pos.hwndInsertAfter = HWND_BOTTOM;
             return LRESULT(0);
@@ -244,7 +244,7 @@ unsafe fn handle_settings_msg(
         WM_MOUSEACTIVATE => {
             return LRESULT(MA_NOACTIVATE as isize);
         }
-        WM_PAINT => {
+        WM_PAINT => unsafe {
             let mut ps = PAINTSTRUCT::default();
             BeginPaint(hwnd, &mut ps);
             if let Err(e) = window.draw() {
@@ -291,5 +291,5 @@ unsafe fn handle_settings_msg(
         }
         _ => {}
     }
-    DefWindowProcW(hwnd, msg, wparam, lparam)
+    unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
 }

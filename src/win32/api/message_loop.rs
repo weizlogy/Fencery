@@ -25,16 +25,18 @@ use crate::win32::api;
 static PENDING_WHEEL: AtomicI32 = AtomicI32::new(0);
 
 /// 低レベルマウスフック。フォーカスに関係なくホイールを捕捉するよ。
-unsafe extern "system" fn mouse_hook_proc(
+extern "system" fn mouse_hook_proc(
     code: i32,
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
     if code >= 0 && wparam.0 == WM_MOUSEWHEEL as usize {
-        let data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
-        // mouseData の上位 16bit がホイール量 (通常 ±120)
-        let delta = ((data.mouseData >> 16) & 0xFFFF) as i16;
-        PENDING_WHEEL.fetch_add(delta as i32, Ordering::Relaxed);
+        unsafe {
+            let data = &*(lparam.0 as *const MSLLHOOKSTRUCT);
+            // mouseData の上位 16bit がホイール量 (通常 ±120)
+            let delta = ((data.mouseData >> 16) & 0xFFFF) as i16;
+            PENDING_WHEEL.fetch_add(delta as i32, Ordering::Relaxed);
+        }
     }
     unsafe { CallNextHookEx(HHOOK::default(), code, wparam, lparam) }
 }
