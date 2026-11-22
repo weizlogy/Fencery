@@ -40,11 +40,24 @@ pub fn get_settings_writer() -> RwLockWriteGuard<'static, Settings> {
         .expect("Failed to acquire write lock on settings")
 }
 
-/// 現在の状態をファイルに保存するよ！
-pub fn save() {
+fn write_settings(flag_redraw: bool) {
     let settings = get_settings_reader();
     match storage::save_settings(&*settings) {
-        Ok(()) => REDRAW_PENDING.store(true, Ordering::Relaxed),
+        Ok(()) => {
+            if flag_redraw {
+                REDRAW_PENDING.store(true, Ordering::Relaxed);
+            }
+        }
         Err(e) => log::error!("Failed to save settings: {}", e),
     }
+}
+
+/// 現在の状態をファイルに保存するよ！ (再描画も要求する)
+pub fn save() {
+    write_settings(true);
+}
+
+/// ウィンドウ位置だけが変わったときなど、再描画が不要な保存に使うよ。
+pub fn save_quiet() {
+    write_settings(false);
 }

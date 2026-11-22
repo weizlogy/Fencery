@@ -147,6 +147,8 @@ pub fn run_message_loop(engine: Rc<GraphicsEngine>) -> Result<(), windows::core:
             // 設定が保存されたら、フォントを使う既存ウィンドウを全部再描画するよ。
             if manager::take_redraw_request() {
                 for window in &mut windows {
+                    // 設定画面で変更した色・透過度・アイコンサイズを反映してから描画するよ。
+                    window.reload_from_settings();
                     if let Err(e) = window.draw() {
                         log::error!("Group redraw error: {}", e);
                     }
@@ -258,7 +260,15 @@ fn handle_menu_event(
         }
         "1003" => { // Help
             if help_window.is_none() {
-                match HelpWindow::create(engine.clone()) {
+                let initial = {
+                    let settings = manager::get_settings_reader();
+                    settings
+                        .windows
+                        .help
+                        .filter(|p| p.is_on_screen())
+                        .map(|p| (p.x, p.y))
+                };
+                match HelpWindow::create(engine.clone(), initial) {
                     Ok(mut window) => {
                         let _ = window.draw();
                         *help_window = Some(window);
@@ -278,7 +288,15 @@ fn handle_menu_event(
         }
         "1005" => { // Settings GUI
             if settings_window.is_none() {
-                match SettingsWindow::create(engine.clone()) {
+                let initial = {
+                    let settings = manager::get_settings_reader();
+                    settings
+                        .windows
+                        .settings
+                        .filter(|p| p.is_on_screen())
+                        .map(|p| (p.x, p.y))
+                };
+                match SettingsWindow::create(engine.clone(), initial) {
                     Ok(mut window) => {
                         let _ = window.draw();
                         *settings_window = Some(window);

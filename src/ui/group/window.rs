@@ -78,7 +78,28 @@ impl GroupWindow {
         api::show_window::move_to_bottom(hwnd);
 
         let icons = child.icons.iter().map(|i| i.path.clone()).collect();
-        let model = GroupModel::new(id, title, child.bg_color.clone(), child.opacity, child.icon_size, icons);
+        // 子にフォント設定があればそれを優先、無ければ親の設定を使うよ。
+        let (font_size, font_family) = {
+            let settings = manager::get_settings_reader();
+            (
+                if child.font_size > 0.0 { child.font_size } else { settings.app.font_size },
+                if !child.font_family.is_empty() {
+                    child.font_family.clone()
+                } else {
+                    settings.app.font_family.clone()
+                },
+            )
+        };
+        let model = GroupModel::new(
+            id,
+            title,
+            child.bg_color.clone(),
+            child.opacity,
+            child.icon_size,
+            font_size,
+            font_family,
+            icons,
+        );
         let renderer = GroupRenderer::new(engine, hwnd, child.width, child.height)?;
         let interaction = InteractionHandler::new();
 
@@ -97,6 +118,26 @@ impl GroupWindow {
         Ok(window)
     }
 
+    /// 設定画面で保存された子設定を model に反映するよ。
+    pub fn reload_from_settings(&mut self) {
+        let settings = manager::get_settings_reader();
+        if let Some(child) = settings.children.get(&self.model.id) {
+            self.model.bg_color_hex = child.bg_color.clone();
+            self.model.opacity = child.opacity;
+            self.model.icon_size = child.icon_size;
+            self.model.font_size = if child.font_size > 0.0 {
+                child.font_size
+            } else {
+                settings.app.font_size
+            };
+            self.model.font_family = if !child.font_family.is_empty() {
+                child.font_family.clone()
+            } else {
+                settings.app.font_family.clone()
+            };
+        }
+    }
+
     pub fn draw(&mut self) -> Result<(), windows::core::Error> {
         let mut rect = RECT::default();
         unsafe { windows::Win32::UI::WindowsAndMessaging::GetClientRect(self.hwnd, &mut rect)?; }
@@ -112,41 +153,31 @@ impl GroupWindow {
     }
 
     pub fn handle_lbutton_down(&mut self) {
-        let settings = manager::get_settings_reader();
-        let font_size = settings.app.font_size;
-        drop(settings);
+        let font_size = self.model.font_size;
         self.interaction.handle_lbutton_down(self.hwnd, self.model.icons.len(), self.model.icon_size, font_size);
         unsafe { windows::Win32::UI::Input::KeyboardAndMouse::SetCapture(self.hwnd); }
     }
 
     pub fn handle_lbutton_dblclk(&mut self) -> Result<(), windows::core::Error> {
-        let settings = manager::get_settings_reader();
-        let font_size = settings.app.font_size;
-        drop(settings);
+        let font_size = self.model.font_size;
         let action = self.interaction.handle_lbutton_dblclk(self.hwnd, self.model.icons.len(), self.model.icon_size, font_size);
         self.perform_action(action)
     }
 
     pub fn handle_rbutton_down(&mut self) -> Result<(), windows::core::Error> {
-        let settings = manager::get_settings_reader();
-        let font_size = settings.app.font_size;
-        drop(settings);
+        let font_size = self.model.font_size;
         let action = self.interaction.handle_rbutton_down(self.hwnd, self.model.icons.len(), self.model.icon_size, font_size);
         self.perform_action(action)
     }
 
     pub fn handle_rbutton_up(&mut self) -> Result<(), windows::core::Error> {
-        let settings = manager::get_settings_reader();
-        let font_size = settings.app.font_size;
-        drop(settings);
+        let font_size = self.model.font_size;
         let action = self.interaction.handle_rbutton_up(self.hwnd, self.model.icons.len(), self.model.icon_size, font_size);
         self.perform_action(action)
     }
 
     pub fn handle_mouse_move(&mut self) -> Result<(), windows::core::Error> {
-        let settings = manager::get_settings_reader();
-        let font_size = settings.app.font_size;
-        drop(settings);
+        let font_size = self.model.font_size;
         let action = self.interaction.handle_mouse_move(self.hwnd, self.model.icons.len(), self.model.icon_size, font_size);
         self.perform_action(action)
     }

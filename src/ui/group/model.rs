@@ -8,6 +8,9 @@ pub struct GroupModel {
     pub bg_color_hex: String,
     pub opacity: f32, // 0.0 ~ 1.0
     pub icon_size: f32,
+    /// 子ウィンドウ固有のフォント設定。未設定なら親 (AppSettings) の値が入る。
+    pub font_size: f32,
+    pub font_family: String,
     pub icons: Vec<IconState>,
     pub hovered_index: Option<usize>,
     pub executing_index: Option<usize>, // 一瞬だけ光らせるための状態
@@ -27,6 +30,8 @@ impl GroupModel {
         bg_color_hex: String,
         opacity: f32,
         icon_size: f32,
+        font_size: f32,
+        font_family: String,
         initial_icons: Vec<PathBuf>,
     ) -> Self {
         let icons = initial_icons
@@ -48,6 +53,8 @@ impl GroupModel {
             bg_color_hex,
             opacity,
             icon_size,
+            font_size,
+            font_family,
             icons,
             hovered_index: None,
             executing_index: None,

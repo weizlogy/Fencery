@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
+    SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+};
 
 /// 設定ファイルに永続化するためのアイコン情報。
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct PersistentIconInfo {
     pub path: PathBuf,
 }
@@ -27,7 +30,7 @@ impl AppSettings {
 }
 
 /// 各グループ（子ウィンドウ）ごとの個別設定。
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct ChildSettings {
     pub x: i32,
@@ -91,12 +94,43 @@ impl ChildSettings {
     }
 }
 
+/// Help / Settings ウィンドウの表示位置。
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, Default, PartialEq)]
+#[serde(default)]
+pub struct WindowPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl WindowPosition {
+    /// 保存座標が仮想画面の範囲内かを調べるよ。
+    /// モニター構成が変わった場合の最低限の救済に使う。
+    pub fn is_on_screen(&self) -> bool {
+        unsafe {
+            let vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+            let vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
+            let vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            let vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+            self.x >= vx && self.x <= vx + vw && self.y >= vy && self.y <= vy + vh
+        }
+    }
+}
+
+/// グループ以外のウィンドウの表示位置。None は未保存 (中央に配置する)。
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct ExtraWindows {
+    pub help: Option<WindowPosition>,
+    pub settings: Option<WindowPosition>,
+}
+
 /// 設定ファイル全体の構造。
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 #[serde(default)]
 pub struct Settings {
     pub app: AppSettings,
     pub children: HashMap<String, ChildSettings>, // キーは ID 文字列 (タイムスタンプ)
+    pub windows: ExtraWindows,
 }
 
 impl Settings {
@@ -172,7 +206,7 @@ mod tests {
                 font_size: 14.5,
                 font_family: "Meiryo".to_string(),
             },
-            children: HashMap::new(),
+            ..Default::default()
         };
         let toml = toml::to_string_pretty(&settings).unwrap();
         let loaded: Settings = toml::from_str(&toml).unwrap();
@@ -185,5 +219,27 @@ mod tests {
         let settings: Settings = toml::from_str("").unwrap();
         assert_eq!(settings.app.font_size, 12.0);
         assert_eq!(settings.app.font_family, "Meiryo");
+    }
+
+    #[test]
+    fn extra_windows_roundtrip_toml() {
+        let settings = Settings {
+            windows: ExtraWindows {
+                help: Some(WindowPosition { x: 120, y: 240 }),
+                settings: Some(WindowPosition { x: -100, y: 50 }),
+            },
+            ..Default::default()
+        };
+        let toml = toml::to_string_pretty(&settings).unwrap();
+        let loaded: Settings = toml::from_str(&toml).unwrap();
+        assert_eq!(loaded.windows.help, Some(WindowPosition { x: 120, y: 240 }));
+        assert_eq!(loaded.windows.settings, Some(WindowPosition { x: -100, y: 50 }));
+    }
+
+    #[test]
+    fn missing_windows_section_defaults_to_none() {
+        let settings: Settings = toml::from_str("").unwrap();
+        assert_eq!(settings.windows.help, None);
+        assert_eq!(settings.windows.settings, None);
     }
 }

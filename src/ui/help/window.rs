@@ -8,6 +8,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
 };
 use crate::graphics::GraphicsEngine;
+use crate::settings::{manager, WindowPosition};
 use crate::ui::help::renderer::HelpRenderer;
 use crate::win32::api;
 
@@ -25,7 +26,10 @@ pub struct HelpWindow {
 }
 
 impl HelpWindow {
-    pub fn create(engine: Rc<GraphicsEngine>) -> Result<Box<Self>, windows::core::Error> {
+    pub fn create(
+        engine: Rc<GraphicsEngine>,
+        initial: Option<(i32, i32)>,
+    ) -> Result<Box<Self>, windows::core::Error> {
         let instance = unsafe { GetModuleHandleW(None)? };
         let class_name = api::utils::to_wide("FenceryGroupClass");
         let window_name = api::utils::to_wide("Fencery Help");
@@ -35,11 +39,15 @@ impl HelpWindow {
         let width = 450;
         let height = 600;
 
-        // 画面中央付近の「自然な位置」を計算
+        // 保存位置が仮想画面内なら使う。ダメなら中央付近に戻す (最低限の救済)。
         let screen_w = unsafe { GetSystemMetrics(SM_CXSCREEN) };
         let screen_h = unsafe { GetSystemMetrics(SM_CYSCREEN) };
-        let x = (screen_w - width) / 2 + 50; // 少し右にずらす
-        let y = (screen_h - height) / 2 - 50; // 少し上にずらす
+        let default_x = (screen_w - width) / 2 + 50; // 少し右にずらす
+        let default_y = (screen_h - height) / 2 - 50; // 少し上にずらす
+        let (x, y) = match initial {
+            Some((x, y)) if WindowPosition { x, y }.is_on_screen() => (x, y),
+            _ => (default_x, default_y),
+        };
 
         let options = api::create_window::WindowOptions {
             x, y, width, height,
@@ -118,8 +126,26 @@ impl HelpWindow {
     }
 
     pub fn handle_lbutton_up(&mut self) {
+        let was_dragging = self.is_dragging;
         self.is_dragging = false;
         unsafe { windows::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture().ok(); }
+        if was_dragging {
+            self.save_position();
+        }
+    }
+
+    /// 現在の表示位置を config.toml に保存するよ。
+    /// 位置だけの変更なので再描画フラグは立てない。
+    fn save_position(&self) {
+        let mut rect = RECT::default();
+        if unsafe { GetWindowRect(self.hwnd, &mut rect) }.is_err() {
+            return;
+        }
+        {
+            let mut settings = manager::get_settings_writer();
+            settings.windows.help = Some(WindowPosition { x: rect.left, y: rect.top });
+        }
+        manager::save_quiet();
     }
 
     pub fn handle_rbutton_down(&mut self) -> Result<(), windows::core::Error> {
@@ -132,6 +158,8 @@ impl HelpWindow {
         let ctrl_down = unsafe { (GetKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0 };
 
         if ctrl_down {
+            // 閉じる前に最後の位置を保存するよ。
+            self.save_position();
             // ヘルプを閉じる (UPイベントで実行することで, デスクトップにメニューが出ないようにする)
             unsafe {
                 windows::Win32::UI::WindowsAndMessaging::PostMessageW(
